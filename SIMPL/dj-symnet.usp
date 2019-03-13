@@ -1,0 +1,105 @@
+/*
+	$Id: dj-symnet.usp 266 2017-11-13 09:43:48Z gwebb $
+	DJ logic for Symnet controllers
+
+
+BUGS/TODO/NOTES
+
+*/
+
+#DEFINE_CONSTANT MAX_CH 10
+#DEFINE_CONSTANT PULSE_TIME 50 //half second
+#DEFINE_CONSTANT MAX_CC 100
+
+
+#DEFAULT_VOLATILE
+#ENABLE_STACK_CHECKING
+#ENABLE_TRACE
+
+integer_parameter _SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_;
+integer_parameter _SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_;
+STRING_PARAMETER cc_num[MAX_CC,MAX_CC][10];
+
+DIGITAL_INPUT
+	on_tpr[MAX_CH],			//from UI press
+	cue_tpr[MAX_CH],		//  "   "   "
+	on_fb_pulse[MAX_CH],			//from SymNet
+	off_fb_pulse[MAX_CH],			//  "     "
+	cue_on_fb_pulse[MAX_CH],		//  "     "
+	cue_off_fb_pulse[MAX_CH,MAX_CH]		//  "     "
+	;
+DIGITAL_OUTPUT
+	tx_busy,
+	on_pulse[MAX_CH],		//to SymNet
+	off_pulse[MAX_CH],		// "   "
+	cue_on_pulse[MAX_CH],		// "   "
+	cue_off_pulse[MAX_CH],		// "   "
+	on_state[MAX_CH],		//emulated feedback  (0 or 1)
+	cue_state[MAX_CH,MAX_CH]	//   "        "       "  "  "
+	;
+ANALOG_INPUT
+	_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,
+	cc_set[MAX_CC,MAX_CC]
+	;
+STRING_OUTPUT
+	To_SymNet$
+	;
+
+
+//
+//
+PUSH on_tpr {
+	integer i;
+	i = GetLastModifiedArrayIndex();
+	if ( on_state[i] ) {
+		/* Pulse off */
+		PULSE ( PULSE_TIME, off_pulse[i] );
+	} else {
+		/* Pulse on */
+		PULSE ( PULSE_TIME, on_pulse[i] );
+	}
+}
+PUSH cue_tpr {
+	integer i;
+	i = GetLastModifiedArrayIndex();
+	if ( cue_state[i] ) {
+		/* Pulse off */
+		PULSE ( PULSE_TIME, cue_off_pulse[i] );
+	} else {
+		/* Pulse on */
+		PULSE ( PULSE_TIME, cue_on_pulse[i] );
+	}
+}
+//
+//Pulses from SymNet
+PUSH on_fb_pulse {
+	integer i;
+	i = GetLastModifiedArrayIndex();
+	on_state[i] = 1;
+}
+PUSH off_fb_pulse {
+	integer i;
+	i = GetLastModifiedArrayIndex();
+	on_state[i] = 0;
+}
+PUSH cue_on_fb_pulse {
+	integer i;
+	i = GetLastModifiedArrayIndex();
+	cue_state[i] = 1;
+}
+PUSH cue_off_fb_pulse {
+	integer i;
+	i = GetLastModifiedArrayIndex();
+	cue_state[i] = 0;
+}
+	
+THREADSAFE CHANGE cc_set {  //threadsafe and delay are a hack for throttling
+	integer i;
+	i = GetLastModifiedArrayIndex();
+	MakeString ( To_SymNet$, "CSG %s %u\r", cc_num[i], cc_set[i] );  //fixme: need to throttle...
+	Delay ( 20 ); //hack
+
+}
+
+function main() {
+}

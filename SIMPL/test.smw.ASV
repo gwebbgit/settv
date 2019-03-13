@@ -3638,7 +3638,6 @@ Cmn47=id="195157" subtype="rsga" type="appl" version="2.0.5">Whisperings</app>\x
 Cmn48=<app id=\\00:56:14.359: Roku_Rx$ -> "37665" subtype="rsga" type="appl"||1
 Cmn49=version="2.7.13">CalendarStream</app>\x0A\\<app id="22726" subtype="rsga"||1
 Cmn50=type="appl" version="2.7.14">CalendarStream</app>\x0A</apps>\x0A\\
-Pin=True
 mI=38
 I1=69
 I3=71
@@ -4160,7 +4159,6 @@ n1I=276
 n2I=32
 n1O=276
 Cmn1=XPanel
-Pin=True
 mI=583
 I11=8
 I12=117
@@ -4935,7 +4933,6 @@ n1I=68
 n2I=32
 n1O=68
 Cmn1=TPMC-3X
-Pin=True
 mC=5
 C1=50
 C2=54
