@@ -13,7 +13,7 @@ SavedBy=SMW4.09.04
 [
 ObjTp=RSDInfo
 ID=15
-Tm=1552642332
+Tm=1552647056
 EiscCd=970
 ]
 [
@@ -124,7 +124,7 @@ InputCue32=EMPTY
 InputSigType33=Analog
 InputCue33=EMPTY
 InputSigType34=Analog
-InputCue34=DSP_TV_Vol_F/#
+InputCue34=DSP_TV_Vol_Set/#
 InputSigType35=Analog
 InputCue35=EMPTY
 InputSigType36=Analog
@@ -317,7 +317,7 @@ OutputCue31=EMPTY
 OutputSigType32=Digital
 OutputCue32=EMPTY
 OutputSigType33=Analog
-OutputCue33=DSP_TV_Vol_Set/#
+OutputCue33=DSP_TV_Vol_F/#
 OutputSigType34=Analog
 OutputCue34=EMPTY
 OutputSigType35=Analog
