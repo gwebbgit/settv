@@ -4366,6 +4366,7 @@ ObjTp=Sg
 H=42
 Nm=to_symnet_udp
 SgTp=4
+SgTf=Yes
 ]
 [
 ObjTp=Sg
