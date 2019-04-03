@@ -1,0 +1,12 @@
+New Audio Controls 190402
+
+Auto Select:
+	On/Off toggle
+
+Ofc Select:
+	Sel:  Lenovo | Laptop | DJ | TV
+
+Bath:
+	Tone: Music | Vocals
+
+TV Audio:
