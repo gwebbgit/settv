@@ -1709,8 +1709,8 @@ Xm=-1
 Ym=-1
 SH=30
 Z=100
-Ht=1
-Hi=3
+Ht=4
+Hi=1
 ]
 [
 ObjTp=Bw
@@ -2751,15 +2751,14 @@ PrH=29
 CF=2
 n1I=3
 n1O=2
-Cmn1=DISABLE Auto Priority\\use out* for startup to "set"
+Cmn1=Enable Auto Priority\\
 mI=3
-I1=213
-I2=214
+I1=214
+I2=101
 I3=102
 mO=2
 tO=2
-O1=103
-O2=104
+O1=104
 ]
 [
 ObjTp=Sm
@@ -4677,6 +4676,11 @@ Nm=dsp_FANHOLD_complete_pulse
 ]
 [
 ObjTp=Sg
+H=101
+Nm=dsp_auto_priority_reset^
+]
+[
+ObjTp=Sg
 H=102
 Nm=dsp_auto_priority_tpr
 SgTf=Yes
@@ -5249,11 +5253,6 @@ Nm=WPR_Center8^
 ObjTp=Sg
 H=212
 Nm=WPR_Center9^
-]
-[
-ObjTp=Sg
-H=213
-Nm=dsp_auto_priority_reset^
 ]
 [
 ObjTp=Sg
