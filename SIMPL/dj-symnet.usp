@@ -51,23 +51,34 @@ STRING_OUTPUT
 PUSH on_tpr {
 	integer i;
 	i = GetLastModifiedArrayIndex();
+	/* Send device on or off pulse;
+	   also immediately change user feedback before device feedback comes in
+	   (which it may never) */
 	if ( on_state[i] ) {
 		/* Pulse off */
 		PULSE ( PULSE_TIME, off_pulse[i] );
+		on_state[i] = 0;
 	} else {
 		/* Pulse on */
 		PULSE ( PULSE_TIME, on_pulse[i] );
+		on_state[i] = 1;
 	}
+
 }
 PUSH cue_tpr {
 	integer i;
 	i = GetLastModifiedArrayIndex();
+	/* Send device on or off pulse;
+	   also immediately change user feedback before device feedback comes in
+	   (which it may never) */
 	if ( cue_state[i] ) {
 		/* Pulse off */
 		PULSE ( PULSE_TIME, cue_off_pulse[i] );
+		cue_state[i] = 0;
 	} else {
 		/* Pulse on */
 		PULSE ( PULSE_TIME, cue_on_pulse[i] );
+		cue_state[i] = 1;
 	}
 }
 //

@@ -46,17 +46,21 @@ namespace UserModule_DJ_SYMNET
                 
                 __context__.SourceCodeLine = 53;
                 I = (ushort) ( Functions.GetLastModifiedArrayIndex( __SignalEventArg__ ) ) ; 
-                __context__.SourceCodeLine = 54;
+                __context__.SourceCodeLine = 57;
                 if ( Functions.TestForTrue  ( ( ON_STATE[ I ] .Value)  ) ) 
                     { 
-                    __context__.SourceCodeLine = 56;
+                    __context__.SourceCodeLine = 59;
                     Functions.Pulse ( 50, OFF_PULSE [ I] ) ; 
+                    __context__.SourceCodeLine = 60;
+                    ON_STATE [ I]  .Value = (ushort) ( 0 ) ; 
                     } 
                 
                 else 
                     { 
-                    __context__.SourceCodeLine = 59;
+                    __context__.SourceCodeLine = 63;
                     Functions.Pulse ( 50, ON_PULSE [ I] ) ; 
+                    __context__.SourceCodeLine = 64;
+                    ON_STATE [ I]  .Value = (ushort) ( 1 ) ; 
                     } 
                 
                 
@@ -78,19 +82,23 @@ namespace UserModule_DJ_SYMNET
             ushort I = 0;
             
             
-            __context__.SourceCodeLine = 64;
+            __context__.SourceCodeLine = 70;
             I = (ushort) ( Functions.GetLastModifiedArrayIndex( __SignalEventArg__ ) ) ; 
-            __context__.SourceCodeLine = 65;
+            __context__.SourceCodeLine = 74;
             if ( Functions.TestForTrue  ( ( CUE_STATE[ I ] .Value)  ) ) 
                 { 
-                __context__.SourceCodeLine = 67;
+                __context__.SourceCodeLine = 76;
                 Functions.Pulse ( 50, CUE_OFF_PULSE [ I] ) ; 
+                __context__.SourceCodeLine = 77;
+                CUE_STATE [ I]  .Value = (ushort) ( 0 ) ; 
                 } 
             
             else 
                 { 
-                __context__.SourceCodeLine = 70;
+                __context__.SourceCodeLine = 80;
                 Functions.Pulse ( 50, CUE_ON_PULSE [ I] ) ; 
+                __context__.SourceCodeLine = 81;
+                CUE_STATE [ I]  .Value = (ushort) ( 1 ) ; 
                 } 
             
             
@@ -112,9 +120,9 @@ object ON_FB_PULSE_OnPush_2 ( Object __EventInfo__ )
         ushort I = 0;
         
         
-        __context__.SourceCodeLine = 77;
+        __context__.SourceCodeLine = 88;
         I = (ushort) ( Functions.GetLastModifiedArrayIndex( __SignalEventArg__ ) ) ; 
-        __context__.SourceCodeLine = 78;
+        __context__.SourceCodeLine = 89;
         ON_STATE [ I]  .Value = (ushort) ( 1 ) ; 
         
         
@@ -135,9 +143,9 @@ object OFF_FB_PULSE_OnPush_3 ( Object __EventInfo__ )
         ushort I = 0;
         
         
-        __context__.SourceCodeLine = 82;
+        __context__.SourceCodeLine = 93;
         I = (ushort) ( Functions.GetLastModifiedArrayIndex( __SignalEventArg__ ) ) ; 
-        __context__.SourceCodeLine = 83;
+        __context__.SourceCodeLine = 94;
         ON_STATE [ I]  .Value = (ushort) ( 0 ) ; 
         
         
@@ -158,9 +166,9 @@ object CUE_ON_FB_PULSE_OnPush_4 ( Object __EventInfo__ )
         ushort I = 0;
         
         
-        __context__.SourceCodeLine = 87;
+        __context__.SourceCodeLine = 98;
         I = (ushort) ( Functions.GetLastModifiedArrayIndex( __SignalEventArg__ ) ) ; 
-        __context__.SourceCodeLine = 88;
+        __context__.SourceCodeLine = 99;
         CUE_STATE [ I]  .Value = (ushort) ( 1 ) ; 
         
         
@@ -181,9 +189,9 @@ object CUE_OFF_FB_PULSE_OnPush_5 ( Object __EventInfo__ )
         ushort I = 0;
         
         
-        __context__.SourceCodeLine = 92;
+        __context__.SourceCodeLine = 103;
         I = (ushort) ( Functions.GetLastModifiedArrayIndex( __SignalEventArg__ ) ) ; 
-        __context__.SourceCodeLine = 93;
+        __context__.SourceCodeLine = 104;
         CUE_STATE [ I]  .Value = (ushort) ( 0 ) ; 
         
         
@@ -204,11 +212,11 @@ object CC_SET_OnChange_6 ( Object __EventInfo__ )
         ushort I = 0;
         
         
-        __context__.SourceCodeLine = 98;
+        __context__.SourceCodeLine = 109;
         I = (ushort) ( Functions.GetLastModifiedArrayIndex( __SignalEventArg__ ) ) ; 
-        __context__.SourceCodeLine = 99;
+        __context__.SourceCodeLine = 110;
         MakeString ( TO_SYMNET__DOLLAR__ , "CSG {0} {1:d}\r", CC_NUM [ I ] , (ushort)CC_SET[ I ] .UshortValue) ; 
-        __context__.SourceCodeLine = 100;
+        __context__.SourceCodeLine = 111;
         Functions.Delay (  (int) ( 20 ) ) ; 
         
         
