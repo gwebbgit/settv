@@ -1,0 +1,117 @@
+/*******************************************************************************************
+  SIMPL+ Module Information
+  (Fill in comments below)
+*******************************************************************************************/
+/*
+Dealer Name:
+System Name:
+System Number:
+Programmer:
+Comments:
+*/
+
+/*******************************************************************************************
+  Compiler Directives
+  (Uncomment and declare compiler directives as needed)
+*******************************************************************************************/
+// #ENABLE_DYNAMIC
+// #SYMBOL_NAME ""
+// #HINT ""
+// #DEFINE_CONSTANT
+// #CATEGORY "" 
+// #PRINT_TO_TRACE
+// #DIGITAL_EXPAND 
+// #ANALOG_SERIAL_EXPAND 
+// #OUTPUT_SHIFT 
+// #HELP_PDF_FILE ""
+#DEFAULT_VOLATILE
+#ENABLE_STACK_CHECKING
+#ENABLE_TRACE
+// #ENCODING_ASCII
+// #ENCODING_UTF16
+// #ENCODING_INHERIT_FROM_PARENT
+// #ENCODING_INHERIT_FROM_PROGRAM
+/*
+#HELP_BEGIN
+   (add additional lines of help lines)
+#HELP_END
+*/
+
+#DEFINE_CONSTANT MAX_SOURCES 4
+#DEFINE_CONSTANT STRLEN_HTML_LABEL 200
+
+STRING_PARAMETER
+	Source_Name[MAX_SOURCES,MAX_SOURCES][STRLEN_HTML_LABEL]
+	;
+
+DIGITAL_INPUT
+	_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,
+	reupdate_pr,
+	browse_fwd_pr,
+	browse_rev_pr,
+	browse_enter_pr
+	;
+
+DIGITAL_OUTPUT
+	_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,
+	xp_connectE_p,		//pulses to connect equipment @Browse_Ch
+	xp_disconnect_p		//pulses to disconnect crosspoint
+	;
+
+ANALOG_OUTPUT
+	Browse_Ch
+	;
+
+STRING_OUTPUT
+	ui_browse_text
+	;
+
+/*** FUNCTIONS ***/
+
+
+//
+// Re-pushes current UI strings.
+//
+function fcn_repush_ui() {
+	if ( Browse_Ch < 1 || Browse_Ch > MAX_SOURCES ) {
+		/* No or invalid source */
+		ui_browse_text = "-";
+	} else {
+		/* Valid source: display name */
+		ui_browse_text = Source_Name[ Browse_Ch ];
+	}
+
+}
+
+
+/*** EVENTS ***/
+
+PUSH reupdate_pr {
+	fcn_repush_ui();
+}
+
+
+//
+// Browse fwd/rev/enter
+//
+PUSH browse_fwd_pr {
+	Browse_Ch = ( Browse_Ch + 1 ) % MAX_SOURCES + 1;
+	ui_browse_text = Source_Name[ Browse_Ch ];
+}
+PUSH browse_rev_pr {
+	Browse_Ch = ( Browse_Ch - 1 ) % MAX_SOURCES + 1;
+	ui_browse_text = Source_Name[ Browse_Ch ];
+}
+PUSH browse_enter_pr {
+	/* Disconnect current */
+	Pulse ( 1, xp_disconnect_p );
+	Delay ( 1 );
+
+	/* Connect Browse_Ch */
+	Pulse ( 1, xp_connectE_p );
+}
+
+function Main() {
+	WaitForInitializationComplete();
+	fcn_repush_ui();
+}

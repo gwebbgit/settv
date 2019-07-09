@@ -1,0 +1,461 @@
+/*
+ * riglib.usl
+ *
+ * 130108.00
+ * -parse_ints(): changed zero remaining values to built-in SetArray function, hopefully much faster
+ * -changed get_smw_compile_time() function to better 3-series support; reads boot.bt file now....needs testing.
+ * -changing BUMP_CC_ON/OFF constants to positive, since 3-series linker can't handle negative value conversions
+ *   (e.g. -32767 becomes 32769; -32766 becomes 32770 ...i reckon???(need to test this))
+ *   (these are arbitrary values, so it probably doesn't matter; just that they are distant enough from non-magical
+ *   typical bump values like +/-781)
+ * -changed DB sizing
+ *
+ * TODO:
+ * -change GMT timestrings to local (e.g. compile_time...)
+ *
+ * Global functions and constants for Newtek Sound Rig
+ *
+ */
+
+
+
+/* are these required, and do they affect the including modules as well? */
+
+#DEFAULT_VOLATILE
+#ENABLE_STACK_CHECKING
+#ENABLE_TRACE
+#ENCODING_INHERIT_FROM_PARENT
+
+/* SymNet related */
+#DEFINE_CONSTANT BUMP_CC_1DB 781  //781=1dB
+#DEFINE_CONSTANT BUMP_CC_UIN_1DB 546  //546=1dB for UIN volumes (any others???)
+#DEFINE_CONSTANT BUMP_CC_DEFAULT 1562  //1562=2dB
+/* Magic BUMP_CC_ Constants */
+//3-series linker can't convert negatives to integers, so we have to do it in advance.
+//For example:
+// -32768 = "32768"  BUMP_CC_GSB2  (minimum signed_integer)
+// -32767 = "32769"  BUMP_CC_OFF
+// -32766 = "32770"  BUMP_CC_ON
+// -32765 = "32771"  BUMP_CC_METERSTOP
+// -32764 = "32772"  BUMP_CC_METERSTART
+// -32763 = "32773"  BUMP_CC_METERSNAPSHOT
+//Applications must avoid sending normal bump values using these magic values or they
+//will be interpreted wrongly without warning.
+#DEFINE_CONSTANT BUMP_CC_GSB2 32768 //=-32768 magic value to request SymNet controller value update; requires unit # (probably from unitnums[])
+#DEFINE_CONSTANT BUMP_CC_OFF 32769 //=-32767 magic value to force SymNet CC value to 0 in the regular queue
+#DEFINE_CONSTANT BUMP_CC_ON 32770  //=-32766 magic value to force SymNet CC value to 65535 in the regular queue
+#DEFINE_CONSTANT BUMP_CC_METERSTOP 32771  //=-32765
+#DEFINE_CONSTANT BUMP_CC_METERSTART 32772  //=-32764
+#DEFINE_CONSTANT BUMP_CC_METERSNAPSHOT 32773  //=-32763
+#DEFINE_CONSTANT BUMP_CC_METERZERO 32774  //=-32762
+#DEFINE_CONSTANT BUMP_CC_OFF_PRIORITY 32775 //=-32761 magic value to force SymNet CC value to 0 in the priority queue
+#DEFINE_CONSTANT BUMP_CC_ON_PRIORITY 32776  //=-32760 magic value to force SymNet CC value to 65535 in the priority queue
+#DEFINE_CONSTANT MAX_CC 5000   //including meters; seems adequate for now
+#DEFINE_CONSTANT MIN_CC 100  //cc#s below this are reserved or erroneous
+#DEFINE_CONSTANT FROM_SYMNET_BUFFER_LEN_LARGE 65534  //32000  //apparently the PUR is pushing out 2425 13-byte controllers, which is 31525
+							//see also FROM_SYMNET_LEN_WARNING
+#DEFINE_CONSTANT FROM_SYMNET_BUFFER_LEN 1000  //we're running out of RAM, so let's try giving the big buffer only to the big player(s)
+				//NOT WORKING: 14000  //worst case, during PUR: =1024 pushable controllers * 13 bytes each; plus some overhead
+						// for other (non-push-refresh) data or junk in the From_SymNet buffer
+
+/* Rigmap file */
+#DEFINE_CONSTANT RIGMAP_FILENAME "\\user\\rigmap.txt"
+//120810deprecated: #DEFINE_CONSTANT RIGMAP_OUTFILE_DIR "\\user\\"  //with trailing backslash
+#DEFINE_CONSTANT RIGMAP_CCOUT_DIR "\\user\\ccout\\"  //with trailing backslash
+#DEFINE_CONSTANT MAXLEN_RIGMAP_ARG 100		//(120715: formerly MAXLEN_CONFIG_ARG) max length of any rigmap config file argument, including delimiter(s); (look out for weird config file directives and junk, else SIMPL+ overflow errors!)
+#DEFINE_CONSTANT MAX_ARGS_PER_ROW 100
+
+/* Canonical CC #s */
+#DEFINE_CONSTANT CCC_CUE_SELECT 4210
+#DEFINE_CONSTANT CCC_DK_BYP 4214  //0=run, 65535=DK bypass
+
+/* Database sizing */
+#DEFINE_CONSTANT MAX_DSPMODULES 150
+#DEFINE_CONSTANT MAX_DSPDESTS 200
+#DEFINE_CONSTANT MAX_DSPMODEDITS 520
+#DEFINE_CONSTANT MAX_DSPSENDS 320	//formerly MAX_DSPFADERLINKS; must be less than SX_SENDID_FADER (and any other future SX_SENDID_xx constants)
+#DEFINE_CONSTANT MAX_CHS 120
+#DEFINE_CONSTANT MAX_FFS 30
+#DEFINE_CONSTANT MAX_CCCS 50
+#DEFINE_CONSTANT MAX_FBS 30
+#DEFINE_CONSTANT MAXLEN_CH_GENLABEL 16
+
+/* Object prototype sizings */
+#DEFINE_CONSTANT MAXLEN_MODULETYPE 16
+#DEFINE_CONSTANT MAXLEN_MODULE_LABEL 16
+#DEFINE_CONSTANT MAXLEN_CH_NAME 16
+#DEFINE_CONSTANT MAXLEN_CH_ABBREV 5
+#DEFINE_CONSTANT MAXLEN_FB_NAME 30
+#DEFINE_CONSTANT MAXLEN_STRING_ANSWER 16
+#DEFINE_CONSTANT MAXLEN_DEST_KEY 16
+#DEFINE_CONSTANT MAXLEN_DEST_NOTE 16
+#DEFINE_CONSTANT MAXLEN_SEND_LABEL 40 //MAXLEN_DEST_KEY + MAXLEN_DEST_NOTE + 3  (3 for the " > " or just ">")
+#DEFINE_CONSTANT MAXLEN_CFG_NAME 20
+
+#DEFINE_CONSTANT MAX_MODEDITS_PER_CH 12  //formerly MAX_MODS_PER_CH
+#DEFINE_CONSTANT MAX_FLINKS_PER_CH 12  //120128: to be deprecated
+#DEFINE_CONSTANT MAX_SENDS_PER_CH 24	//120128: combined from FLINKS+SSENDS
+#DEFINE_CONSTANT MAX_BUMPCCS_PER_CH 49   //worst case [ MAX_SENDS_PER_CH * 2 (stereo sends) ] + 1 (fadercc)
+#DEFINE_CONSTANT MAX_CCS_PER_SEND 4   //used to be 2; now doubled because need to store connect button cc's in addition to send faders
+#DEFINE_CONSTANT MAX_CCS_PER_FLINK 2  //120128: to be deprecated
+#DEFINE_CONSTANT MAX_SSENDS_PER_CH 12  //120128: to be deprecated
+#DEFINE_CONSTANT MAX_FADERS_PER_FF 50
+
+/* Faderboard slot types */
+#DEFINE_CONSTANT TYPE_CH 1
+#DEFINE_CONSTANT TYPE_FF 2
+#DEFINE_CONSTANT TYPE_CC 3
+
+/* Module types */
+#DEFINE_CONSTANT COMP_TYPE_COMPNM 1
+#DEFINE_CONSTANT GATE_TYPE_GSCNM 1
+#DEFINE_CONSTANT GATE_TYPE_VSQNM 2
+
+/* Sx (Send slot) navigation and control modes
+ * Note some functions require this to be one single (base 10) digit
+ * (e.g. CntRoute CCR_cmd parsing functions), so don't create more than 0-9 modes!
+ */
+#DEFINE_CONSTANT SX_NAVMODE_NONE 0
+#DEFINE_CONSTANT SX_NAVMODE_FIRST 1
+#DEFINE_CONSTANT SX_NAVMODE_SV 1  //mono or both volume
+#DEFINE_CONSTANT SX_NAVMODE_SV1 2  //L only volume
+#DEFINE_CONSTANT SX_NAVMODE_SV2 3  //R only volume
+#DEFINE_CONSTANT SX_NAVMODE_SC 4  //mono or both connect
+#DEFINE_CONSTANT SX_NAVMODE_SC1 5  //L only connect
+#DEFINE_CONSTANT SX_NAVMODE_SC2 6  //R only connect
+#DEFINE_CONSTANT SX_NAVMODE_FL 7  //FaderLink toggle
+#DEFINE_CONSTANT SX_NAVMODE_CHMUTE 8  //Channel Mute toggle
+#DEFINE_CONSTANT SX_NAVMODE_FBDB 9 //FaderBoarD Bump mode
+#DEFINE_CONSTANT SX_NAVMODE_LAST 9
+
+/* LAYOUT configurations */
+#DEFINE_CONSTANT LAYOUT_XP45 1	//(original NutPanel, deprecated) soon to be new 35+10 fader NutPanel XPanel, no nav (direct access only)
+#DEFINE_CONSTANT LAYOUT_PTX30N 2	//PTX3 30-fader 3-row, 1-10 middle row, 11-20 bottom row, 21-30 top row, navigable
+#DEFINE_CONSTANT LAYOUT_3_UNUSED 3	//unused
+#DEFINE_CONSTANT LAYOUT_XP43 4	//"New NutPanel" 35+8 fader XPanel, no nav (direct access only)
+#DEFINE_CONSTANT LAYOUT_HORNX 5	//HornX (deprecated?)
+#DEFINE_CONSTANT LAYOUT_SILVERIPHONE 6	//Dave Silver iPhone 120727
+
+
+/* Query commands */
+/* 120600: QueryPort (QP) is all deprecated now */
+//120128 DEPRECATED: #DEFINE_CONSTANT QP_QUERYTYPE_FLINK1 1
+//120128 DEPRECATED: #DEFINE_CONSTANT QP_QUERYTYPE_FLINK2 2
+//120128 DEPRECATED: #DEFINE_CONSTANT QP_QUERYTYPE_SSEND1 3
+//120128 DEPRECATED: #DEFINE_CONSTANT #DEFINE_CONSTANT QP_QUERYTYPE_SSEND2 4
+//120128 DEPRECATED: #DEFINE_CONSTANT #DEFINE_CONSTANT QP_QUERYTYPE_FLINK_DESTTYPE 5
+//120128 DEPRECATED: #DEFINE_CONSTANT #DEFINE_CONSTANT QP_QUERYTYPE_SSEND_DESTTYPE 6
+//120129 DEPRECATED: #DEFINE_CONSTANT QP_QUERYTYPE_SEND_DESTTYPE 5
+//120128 DEPRECATED: #DEFINE_CONSTANT QP_QUERYTYPE_FLINK_TEXT 9
+//120128 DEPRECATED: #DEFINE_CONSTANT QP_QUERYTYPE_SSEND_TEXT 10
+//120128 DEPRECATED: #DEFINE_CONSTANT QP_QUERYTYPE_FLINK_ENABLED 13
+//120128 DEPRECATED: #DEFINE_CONSTANT QP_QUERYTYPE_FLINK_ENABLE 14
+//120128 DEPRECATED: #DEFINE_CONSTANT QP_QUERYTYPE_FLINK_DISABLE 15
+//120129 DEPRECATED: #DEFINE_CONSTANT QP_QUERYTYPE_SEND_ENABLED 13
+//120128 DEPRECATED: #DEFINE_CONSTANT QP_QUERYTYPE_SEND_ENABLE 14
+//120128 DEPRECATED: #DEFINE_CONSTANT QP_QUERYTYPE_SEND_DISABLE 15
+
+#DEFINE_CONSTANT QP_QUERYTYPE_CHSEND_SENDID 1
+#DEFINE_CONSTANT QP_QUERYTYPE_SEND_ISFADERLINK 2
+#DEFINE_CONSTANT QP_QUERYTYPE_SEND_CC1 3
+#DEFINE_CONSTANT QP_QUERYTYPE_SEND_CC2 4
+
+#DEFINE_CONSTANT QP_QUERYTYPE_CH_ABBREV 7
+#DEFINE_CONSTANT QP_QUERYTYPE_CH_NAME 8
+#DEFINE_CONSTANT QP_QUERYTYPE_SEND_TEXT 9
+#DEFINE_CONSTANT QP_QUERYTYPE_SEND_KEY 10
+
+#DEFINE_CONSTANT QP_QUERYTYPE_FF_ABBREV 11
+#DEFINE_CONSTANT QP_QUERYTYPE_FF_NAME 12
+
+#DEFINE_CONSTANT QP_QUERYTYPE_SEND_MAKEFLINK 14
+#DEFINE_CONSTANT QP_QUERYTYPE_SEND_UNFLINK 15
+
+#DEFINE_CONSTANT QP_QUERYTYPE_UIN8 16
+#DEFINE_CONSTANT QP_QUERYTYPE_MODEDIT 17   // not used
+#DEFINE_CONSTANT QP_QUERYTYPE_MODEDIT_MODID 18
+#DEFINE_CONSTANT QP_QUERYTYPE_MODEDIT_ADDRESS 19
+#DEFINE_CONSTANT QP_QUERYTYPE_MODEDIT_MOD_TYPE 20
+#DEFINE_CONSTANT QP_QUERYTYPE_MODEDIT_MOD_LABEL 21
+#DEFINE_CONSTANT QP_QUERYTYPE_MODEDIT_MOD_STARTCC 22
+#DEFINE_CONSTANT QP_QUERYTYPE_PEQ_NUMBANDS 23
+#DEFINE_CONSTANT QP_QUERYTYPE_MOD_STARTCC 24
+#DEFINE_CONSTANT QP_QUERYTYPE_CH_METER_CC 25
+#DEFINE_CONSTANT QP_QUERYTYPE_FF_METER_CC 26
+#DEFINE_CONSTANT QP_QUERYTYPE_FF_NUM_CH 27
+#DEFINE_CONSTANT QP_QUERYTYPE_FF_CHID 28
+
+
+
+
+//
+// Chops trailing tab char if exists.
+// Operates in-place on arg.
+//
+function choptab ( string s ) {
+	if ( right(s,1) = "\t" ) s = left(s,len(s)-1);
+}
+
+//
+// Trims right side of string from tabs, CRs and LFs
+//
+function rtrim ( string s ) {
+	integer i;
+	string c[1];
+
+	/* Trivial case (last char is data): don't even try */
+	c = Right ( s, 1 );
+	if ( c != "\t" && c != "\r" && c != "\x0A" ) {
+		//trace ( "rtrim unchanging: [%s](%u){%s}<%u>\r", s, len(s), c, Byte(c,1) );
+		return;  //no change
+	}
+
+	/* Iterate backwards from end(minus1) till we find data */
+	for ( i = len(s) to 1 Step -1 ) {
+		c = mid ( s, i, 1 );
+		if ( c != "\t" ) if ( c != "\r") if ( c != "\x0A" ) {
+			/* Found end of data */
+			//trace ( "rtrim changing: [%s](%u)", s, len(s) );
+			s = left ( s, i );
+			//trace ( "->[%s](%u)\n", s, len(s) );
+			return;
+		}
+	}
+
+	/* Else no data on this string; chop the entire thing */
+	//trace ( "rtrim chopping entire: [%s](%u)", s, len(s) );
+	s = "";
+	//trace ( "->[%s](%u)\n", s, len(s) );
+}
+
+//
+// Chops trailing LF/CR chars if exist.
+// Operates in-place on arg.
+//
+function chomp ( string s ) {
+	if ( right(s,1) = "\x0A" ) s = left(s,len(s)-1);  //chop lf
+	if ( right(s,1) = "\x0D" ) s = left(s,len(s)-1);  //chop cr
+}
+
+//
+// Returns decoded symnet cc # for given encoded cc# from config file.
+// E.g. encoded_ccnum=40330 will return 330.
+//
+integer_function decode_symnet_ccnum ( integer encoded_ccnum ) {
+	if ( encoded_ccnum < 10000 )
+		return (encoded_ccnum);  // not encoded; return unity
+	if ( encoded_ccnum < 20000 )
+		return (encoded_ccnum-10000);
+	if ( encoded_ccnum < 30000 )
+		return (encoded_ccnum-20000);
+	if ( encoded_ccnum < 40000 )
+		return (encoded_ccnum-30000);
+	if ( encoded_ccnum < 50000 )
+		return (encoded_ccnum-40000);
+	if ( encoded_ccnum < 60000 )
+		return (encoded_ccnum-50000);
+	/* Else 60000 or greater...almost an overflow... */
+	return (encoded_ccnum-60000);
+}
+
+//
+// Returns decoded symnet unit # for given encoded cc# from config file.
+// E.g. encoded_ccnum=40330 will return 4.
+//
+integer_function decode_symnet_unitnum ( integer encoded_ccnum ) {
+	if ( encoded_ccnum < 10000 )
+		return (0);  // not encoded; return 0
+	if ( encoded_ccnum < 20000 )
+		return (1);
+	if ( encoded_ccnum < 30000 )
+		return (2);
+	if ( encoded_ccnum < 40000 )
+		return (3);
+	if ( encoded_ccnum < 50000 )
+		return (4);
+	if ( encoded_ccnum < 60000 )
+		return (5);
+	/* Else 60000 or greater...almost an overflow... */
+	return (6);
+}
+
+//
+// Removes first arg from line string, and returns it.
+// Line string must be a tab-delimited list of args.
+// line returns with the rest on it (if any).
+// Strips trailing delimiter (TAB/LF/CR), unlike the SIMPL+ functions!
+//
+string_function remove_arg ( string line ) {
+	string arg[MAXLEN_RIGMAP_ARG];
+	arg = remove ( "\t", line );	//warning: SIMPL+ runtime error if len(arg) > MAXLEN_RIGMAP_ARG, e.g. weird config junk
+	if ( len(arg) > 0 ) {
+		/* Found it; chop the tab and return it */
+		choptab ( arg );
+		return ( arg );
+	}
+	/* Else just return the whole string as the arg */
+	/* (but chomp the LF/CR's first) */
+	arg = line;
+	chomp ( arg );
+	line = "";
+	return ( arg );
+}
+
+//
+// 120314: better matching of endTag at end of line with trailing CR/LFs;
+// now uses remove_arg()
+// Parses line for tab-delimited integer args, adding them to the array specified.
+// Parsing stops when endtag is reached.  End tag is required to be present, or else
+// it shall be assumed that the data string was truncated and is therefore invalid.
+// Line arg is altered in-place, in order to advance correctly for subsequent line
+// processing.  Array arg is in-place, and all new ints overwrite previous values,
+// starting at the position 1 (not 0) of the array.
+// After all the ints are parsed, any remaining entries up to num_zero are zeroed-out
+// so that they will not contain ostensibly invalid stale values.
+// Also makes array element 0 zero, since our application does not use this element.
+//
+function parse_ints ( ByRef integer intArray[], string endTag, string line, integer array_len ) {
+	string arg[MAXLEN_RIGMAP_ARG];
+	integer i, gotTag;
+//print ( "\nparse_ints(intArray,endTag=%s,line=%s,array_len=%u)\n", endTag,line,array_len );
+
+	/* Default all values to zero, especially since we often use zeros to flag end of list */
+	SetArray ( intArray, 0 );
+	
+	/* Loop for each possible element of the array, breaking out when we find the end tag */
+	gotTag = 0;
+	for ( i = 1 to array_len ) {
+		/* Try to remove a term */
+		arg = remove_arg ( line );
+		//trace ( "  parse_ints arg [%s]\n", arg );
+		if ( arg = endTag ) {
+			/* End of args */
+			gotTag = 1;
+			break;
+		} else {
+			/* Valid arg or null arg (zero int value) */
+			intArray[i] = atoi( arg );
+			//trace ( "    +adding arg [%s]  line=[%s]   (i=%d)\n", arg, line, i );
+			if ( len(line) = 0 ) {
+				break;  //end of line
+			}
+		}
+	}
+
+	if ( ! gotTag ) {
+		/* See if array was max size; end tag will be in next position */
+		arg = remove_arg ( line );
+		if ( arg = endTag ) {
+			gotTag = 1;
+		} else {
+			/* End tag not found.  Assume args string is truncated and throw out all. */
+			print ( "\n\aError: parse_ints(): END TAG (%s) MISSING at i=%u; discarding ALL elements; debug follows:\n[%s]\n", endTag,i,line );
+			for ( i = 0 to array_len ) {
+				print ( "\n	%u=[%u]\n", i,intArray[i] );
+			}
+			SetArray ( intArray, 0 );  //don't send out a partial array; kill the whole thing
+			print ( "\n\n\n" );
+		}
+	}
+
+}
+
+//
+// Returns file date/time this SMW program was compiled
+//
+//2-series version
+string_function get_smw_compile_time_2series() {
+	string fdate[20], ftime[20], s[50];
+	file_info finfo;
+	signed_integer result;
+
+	result = StartFileOperations();
+	if ( result != 0 ) {
+		print ( "\nError: riglib.usp: get_smw_compile_time_2series(): StartFileOperations returned %d.\n", result );
+		EndFileOperations();
+		return ( "!" );
+	}
+
+	//always shows GMT for some reason: result = FindFirst ( "\\SIMPL\\*.BIN", finfo );
+	result = FindFirst ( "\\SIMPL\\*.Manifest", finfo );
+	if ( result = 0 ) {
+		/* Found it */
+		fdate = FileDate ( finfo, 1 );
+		ftime = FileTime ( finfo );
+		s = fdate + "  " + ftime;
+	} else {
+		MakeString ( s, "FindFirst=%d", result );
+	}
+	EndFileOperations();
+	return ( s );
+}
+
+//
+//3-series version
+//Reads "boot.bt" file to grep for "CompileDateTime=" field
+string_function get_smw_compile_time_3series() {
+	string datetime[22], s[50];
+	string rdbuf[1000];
+	string buf[1000];
+	string line[1000];
+	file_info finfo;
+	signed_integer result;
+
+	/* First set the damn GMT, in case it's not yet */
+	/* ... */
+
+	/* Open file */
+	result = StartFileOperations();
+	if ( result != 0 ) {
+		print ( "\nError: riglib.usp: get_smw_compile_time_3series(): StartFileOperations returned %d.\n", result );
+		EndFileOperations();
+		return ( "!" );
+	}
+	result = FileOpenShared ( "\\SIMPL\\APP01\\boot.bt", _O_RDONLY | _O_TEXT );
+	if ( result < 0 ) {
+		print ( "\nError: riglib.usp: get_smw_compile_time_3series(): (result=%d) Failed to read boot.bt file.\n", result );
+		EndFileOperations();
+		return ( "!" );
+	}
+
+	/* Read file */
+	fileseek ( result, 0, SEEK_SET );
+	buf = "";
+	while ( FileRead(result,rdbuf,40) > 0 ) {
+		buf = buf + rdbuf;
+
+		/* Process all complete lines in buffer */
+		while ( find("\n",buf) ) {
+			/* Remove the line from the buffer */
+			line = remove ( "\n", buf );
+
+			/* Grep? */
+			if ( left(line,16) = "CompileDateTime=" ) {
+				/* Found the line; chop the string */
+				s = mid ( line, 17, 20 );
+				chomp ( s );
+
+				/* Close and return */
+				FileClose ( result );
+				EndFileOperations();
+				return ( s );
+			}
+		}
+	}
+
+	/* Sorry no match; just close and return dummy string */
+	FileClose ( result );
+	EndFileOperations();
+	s = "?";
+	return ( s );
+}
+//
+//Wrapper function
+string_function get_smw_compile_time() {
+#IF_SERIES2
+	return ( get_smw_compile_time_2series() );
+#ENDIF
+#IF_SERIES3
+	return ( get_smw_compile_time_3series() );
+#ENDIF
+}

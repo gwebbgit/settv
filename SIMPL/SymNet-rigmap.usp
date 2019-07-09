@@ -1,0 +1,1749 @@
+/*
+ * SymNet serial interface module for ntsrigmap
+ * $Id: SymNet-rigmap.usp 24 2015-12-14 02:02:06Z gwebb $
+ *
+ * 130311.01
+ * - crawl_daemon() calls are now supercedable; allows for turbo mode to start over afresh.
+ * - rebuild_update_blocks() is now automatic on each crawl_daemon() call.
+ * - added tracery/debuggery...
+ * - added ProcessLogic before checking for Flush_Buffers, to try to detect button presses better.
+ * - added safe margin for input buffer, useful for not overflowing during RIGSET recalls;
+ *     apparently the "RECALL_TO_SYMNET_DELAY" is not enough; in fact the queue_daemon is
+ *     doing its own delays (not to mention SymNet itself) so this delay is probably moot.
+ * - added constant for canonical PUD range
+ * - addressing symnet_daemon hangup:
+ *   - turned back on Rx_Buffer_Meter
+ *   - turned back on print() debugging in 
+ * - fixed header text on ccout smw compile time
+ * - reset crawl counters upon reload
+ * - changed meter range to 4000-4899  (instead of 4800-4890)
+ * - added day to RIGSET file modtime info.
+ * - adding recall_RIGSET functions/signals...
+ * - now saves constantly to NVRAM as well as RAM; no NVRAM button push required.
+ * - fixed pass-by-reference problem with new pid's; also provides 2-series compatibility.
+ * - added obnoxious trace logging for suspected hangup; hope we can find this problem soon!
+ *    (problem is queue_daemon hangs for unexplained reason, while rest of program continues, and queue grows)
+ * - added daemon pids for running new daemons
+ * - added Rx_Buffer_Meter, but then disabled it because it is not very useful; the buffer size varies so greatly
+ *   especially during crawl result blocks compared with user commands; our SIMPL serial-analog one-shot on the
+ *   SymNet Rx line is more useful.
+ * - fixing: rebuild_update_blocks() needs to get called upon every reload, not just at startup....
+ * - added Flush_Buffers
+ * - moved "negative symnet response" (#nnnnn=-0001) to only when log_ccval enabled, since our reassignments of
+ *   meters to 4800 block has left holes throughout the rigmap (TBD).
+ * - added "turbo crawl" mode, which is basically a temporary hack to allow faster crawl resyncs.
+ *   When turbo crawl is enabled, the crawl pacing is CRAWL_TURBO_PACE (instead of CRAWL_PACE).
+ * - added 4800-4899 stop push...for meters (development...)
+ * - added filter for new ccval not changed; don't spin handlers (new large GSB2 blocks were spinning the downstream handlers
+ *   and stalling the UI's)
+ * - FIXME: now that we send the crawl GSB queries to the queue_daemon (as opposed to jamming them onto the COM line),
+ *   we inherently trip the holdoff timer every time.  We'll adjust these now, but when you fix this, you'll need to
+ *   readjust the timings according to the fact that different timers will be triggered at different times.
+ *   e.g. don't trip the timer flag when the To_SymNet command is a crawl update command.  (Maybe we need an Update Queue???)
+ *   ; also it seems that when you turn off the crawl_daemon, it still runs one more block update after the next
+ *   delay expires (doesn't it?)
+ * - FIXME: reload_rigmap() needs to rebuild the ublocks as well. that means pausing the crawl_daemon (or stoping/restarting it)
+ * - working on Update Block architecture...
+ * - disabled auto-push (PUR) on startup, since NVRAM recall is sufficient, and the PUR dumps may delay other stuff
+ * - FIXME: compiler directive syntax is inconsistent: TAB after equals sign before value?  shouldn't END be #END?
+ * - moved NVRAM write to separate signal and function.
+ * - trying some new symnet timing workarounds...rather crufty at the moment...
+ * - added rudimentary NVRam saving of ccvals: saves when dumps to ccval file; recalls upon startup;
+ *     note that this does not check whether the recalled data is valid!  (TODO: maybe add a checksum test?)
+ *     also separated the cc_val values, since ostensibly they may not change if the rigmap changes.
+ * - FIXING...: if user stops crawl, and then later restarts it, it may not actually resume; i'm not sure why.
+ *    maybe we have to do something to force it to recheck for holdoff when user restarts it.  if not holding off
+ *    when user restarts the crawl, then force the crawl_held down.
+ * - lengthened crawl_daemon startup time, to allow other startup processes (rigmap loads...) to complete and stablize,
+ *   since apparently the crawl daemon is a bitch on other processes(!?)
+ * - 120724.01: requires SymNet microprocessor firmware update 10.004 for fix of GSB/GSB2 junk response;
+ *   - removed fixing of symnet responses; response parsing is more properly strict now, so we can look for 
+ *     more serious response errors
+ * - FIXED?: why does crawl query one over the specified rigmapped CC#s?  e.g. KSC file 120711 shows mods up to 2360,
+ *   and then a gap, restarting in the 2400's.  But rather than skipping evenly from 2360 to 24whatever, it queries
+ *   2361...and then jumps to 24whatever.
+ * - [120711] changed symnet junk response handling
+ * - fixed rigmap loading flag and added error reporting
+ * - added more fix hacks for SymNet leading junk
+ * - added more crawl intelligence
+ * - deprecating old gs_daemon; infavor of new crawl_daemon, which queries only rigmapped cc#s; avoids a lot of wasteed queries
+ * - queue_daemon now handles SU and SUQ for setting curr_unit
+ * - changing some "gs tracking" nomenclature to "crawl"
+ * - changing timers to SMW (uggh!) due to unresolved Delay() hang bug during VPT file uploads (delay() doesn't complete)
+ * - adding curr_unit tracking, to try to help SymNet comm problems by eliminating unnecessary SUQ's
+ * - added ACKs for all replies
+ *
+ */
+#DEFAULT_VOLATILE
+#ENABLE_STACK_CHECKING
+#ENABLE_TRACE
+#USER_LIBRARY "riglib"
+
+#DEFINE_CONSTANT INPUT_BUFFER_MAX 4000  //total length of all expected unprocessed outgoing commands concatenated, from modules
+#DEFINE_CONSTANT INPUT_BUFFER_SAFE_MARGIN 800  //we will try to keep at least this much free space in the buffer, or else our application should wait for the buffer to progress
+#DEFINE_CONSTANT TX_BUFFER_METER_SCALE 4000  //shows 100% of Tx_Buffer_Meter
+#DEFINE_CONSTANT RX_BUFFER_METER_SCALE 32000  //shows 100% of Rx_Buffer_Meter
+#DEFINE_CONSTANT STARTUP_WAIT_RESYNC_DELAY 3000	//(30sec) //hundredths of a second from the main() initial call to the call to resync
+#DEFINE_CONSTANT CRAWL_STARTUP_DELAY 12000	//(12sec) //hundredths of a second from the main() initial call to starting the crawl daemon
+#DEFINE_CONSTANT WAIT_FOR_ACK_TIMEOUT_DEFAULT 200 //200=2 seconds
+//dbg#DEFINE_CONSTANT WAIT_FOR_ACK_INNER_DELAY 20 //10=100ms
+//dbg#DEFINE_CONSTANT PRIORITY_RECHECK_TIMEOUT 50  //normally priority cmd is checked after each command, but if the regular cmd queue is empty, this will recheck for priority cmd
+#DEFINE_CONSTANT MAXLEN_CMD 20  //max length of a command going to SymNet
+#DEFINE_CONSTANT SIMULATED_RESYNC_DURATION 600	//simulated indicator for duration of a full SymNet push refresh
+#DEFINE_CONSTANT CRAWL_PAUSE_SLEEP 200  //time between rechecking when held or paused
+#DEFINE_CONSTANT CRAWL_PACE 800  //time between GS queries
+#DEFINE_CONSTANT CRAWL_TURBO_PACE 100  //time between turbo GS queries
+#DEFINE_CONSTANT CRAWL_BUSY_HOLDOFF 800  //formerly from SIMPL logic; time when user commands are busy, crawl will be held off till this expires
+#DEFINE_CONSTANT STANDARD_PULSE_TIME 2  //what's a good standard pulse time that won't fail?
+#DEFINE_CONSTANT MAX_UNITNUM 16 //is this correct by Symetrix spec?
+//#DEFINE_CONSTANT NUM_UNITS 3 //FIXME: this should be determined by the rigmap
+//dbg#DEFINE_CONSTANT SYMNET_MINIMUM_PACE 5  //centiseconds for early or no ack
+//currently unused: #DEFINE_CONSTANT SU_TIME_BUFFER_DELAY 2  //centiseconds buffer before and after a SU
+#DEFINE_CONSTANT MAX_UBS 5000 //ostensibly no larger than MAX_CC, but probably much smaller, due to contiguous ccs in a block
+#DEFINE_CONSTANT UB_BLOCKSIZE 200 //GSB2 block queries shall be no larger than this value (SymNet ECP says 256 max)
+#DEFINE_CONSTANT FROM_SYMNET_LEN_WARNING 31750 //just short of overflowing FROM_SYMNET_BUFFER_LEN_LARGE
+#DEFINE_CONSTANT FROM_MODULES_LEN_WARNING 3200 //just short of overflowing INPUT_BUFFER_MAX
+#DEFINE_CONSTANT WATCHDOG_INTERVAL 2000  //2000=20 seconds
+#DEFINE_CONSTANT TURBO_NUM_ROUNDS 3
+
+/* RIGSET constants */
+#DEFINE_CONSTANT RIGSET_FILENAME "\\user\\RIGSET.txt"
+#DEFINE_CONSTANT RECALL_TO_SYMNET_DELAY 10
+#DEFINE_CONSTANT TEXT_PAUSE_DELAY 60
+#DEFINE_CONSTANT POPUP_MODE_OFF 0
+#DEFINE_CONSTANT POPUP_MODE_ASK_RECALL_RIGSET 1
+#DEFINE_CONSTANT POPUP_MODE_OK_MSG 2
+#DEFINE_CONSTANT METERS_PUD_START 4402 //131211: was 4501  //FIXME: LevDets should be moved to >4501, shouldn't they???  why did we think they were special? (is 4401 really special?)
+							//Note: the SMW Bump #9 logic still defaults to LevDet=on at startup, even though we've already disabled push; logic needs rework
+#DEFINE_CONSTANT METERS_PUD_END 4999
+
+
+
+/* I/O Digitals */
+DIGITAL_INPUT start_symnet_daemon;
+DIGITAL_INPUT start_queue_daemon;
+DIGITAL_OUTPUT startup_start_daemons;
+DIGITAL_OUTPUT error;
+DIGITAL_INPUT reload_rigmap;
+DIGITAL_OUTPUT rigmap_loaded;
+DIGITAL_INPUT Repush_SymNet;
+DIGITAL_OUTPUT tx_busy;
+digital_output resynced;
+DIGITAL_INPUT crawl_toggle_pr;
+DIGITAL_INPUT Flush_Buffers;
+DIGITAL_OUTPUT crawl_run;
+DIGITAL_OUTPUT DEPRECATED_crawl_rehold;
+DIGITAL_INPUT adv_crawl;
+DIGITAL_OUTPUT crawl_proceed, _SKIP_;
+DIGITAL_INPUT log_cmd_pr;
+DIGITAL_INPUT log_ccval_pr;
+DIGITAL_OUTPUT log_cmd_fb;
+DIGITAL_OUTPUT log_ccval_fb;
+DIGITAL_INPUT dump_ccvals_file_pr;
+DIGITAL_OUTPUT dump_ccvals_file_fb;
+DIGITAL_INPUT dump_ccvals_string_pr;
+DIGITAL_INPUT TEST_skip_RxMeterUpdate;
+DIGITAL_OUTPUT DEPRECATED_dump_ccvals_nvram_fb;
+DIGITAL_INPUT zero_nvram_ccvals_pr;
+DIGITAL_INPUT turbo_crawl_pr;
+DIGITAL_OUTPUT turbo_crawl_fb;
+
+/* RIGSET digitals */
+DIGITAL_INPUT recall_RIGSET_pr; //start button
+DIGITAL_INPUT recall_mode_all_pr, recall_mode_changesonly_pr;  //toggle mode buttons
+DIGITAL_INPUT popup_ok_pr, popup_cancel_pr;  //popup ok/cancel buttons
+DIGITAL_OUTPUT recall_mode_all_fb;  //user feedback
+DIGITAL_OUTPUT popup_ok_sp, popup_ok_cancel_sp;
+
+
+
+/* I/O analog/strings */
+BUFFER_INPUT From_SymNet[FROM_SYMNET_BUFFER_LEN_LARGE];
+buffer_input From_Modules[INPUT_BUFFER_MAX];
+buffer_input From_Modules_PRIORITY[INPUT_BUFFER_MAX];
+STRING_OUTPUT To_SymNet;
+STRING_OUTPUT To_From_Modules, To_From_Modules_PRIORITY; //hack to allow SIMPL+ module to efficiently add to buffer inputs within same module, without bytecopying the entire buffer_input string
+string_output StdOut; 
+string_output crawl_text;
+ANALOG_OUTPUT Wait_For_Ack_Timeout;
+ANALOG_OUTPUT Tx_Buffer_Meter;
+ANALOG_OUTPUT Rx_Buffer_Meter;
+STRING_OUTPUT dump_status_text;
+STRING_OUTPUT ccvals_dump;
+STRING_OUTPUT popup_text;
+STRING_OUTPUT recall_text;
+
+STRING_INPUT dbg_cmd[100];
+
+ANALOG_INPUT _SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_, _SKIP_; //feel free to delete these as you add new an/str outputs
+ANALOG_OUTPUT _SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_,_SKIP_, _SKIP_; //feel free to delete these as you add new an/str outputs
+//ANALOG_INPUT cc_set[MAX_CC,MAX_CC];
+ANALOG_INPUT cc_bump[MAX_CC,MAX_CC];
+ANALOG_OUTPUT cc_val[MAX_CC,MAX_CC];
+
+
+/* Variables */
+integer symnet_daemon_pid;
+integer queue_daemon_pid;
+integer rigmap_loading;
+integer Len_Tx_Scale;
+integer Len_Rx_Scale;
+integer ACK;
+integer curr_unit;
+integer popup_mode;  // POPUP_MODE_*
+//deprecated: integer crawl_num
+NONVOLATILE integer NVRAM_save_crawl_run;
+integer recall_save_crawl_run;
+integer crawl_ubnum, crawl_round_count;
+integer crawl_held;
+integer crawl_daemon_pid;
+integer unitnums[MAX_CC];
+NONVOLATILE integer NV_cc_val[MAX_CC];
+integer num_ccs;
+string rigmap_compile_time[100];
+string rigmap_sourcefile[255];
+integer ub_starts[MAX_UBS], ub_sizes[MAX_UBS], ub_unitnums[MAX_UBS], num_ubs;  //ub's start at 1 (0 is currently unused)
+
+/* RIGSET Variables */
+integer recalling;
+integer recall_pid;
+
+/* DEBUG/DBG Variables */
+integer x1; //debug for queue_daemon position
+integer DBG_ACKOFF;
+integer SYMNET_MINIMUM_PACE;
+integer WAIT_FOR_ACK_INNER_DELAY;
+integer PRIORITY_RECHECK_TIMEOUT;
+
+
+//
+//
+// Functions
+//
+//
+
+/* RIGSET FUNCTIONS */
+//
+//Returns string showing RIGSET file modtime.
+//
+string_function get_rigset_file_modtime () {
+	string fday[20], fdate[20], ftime[20], s[50];
+	file_info finfo;
+	signed_integer result;
+
+	result = StartFileOperations();
+	if ( result != 0 ) {
+		/* Error */
+		StdOut = "Error: SymNet-rigmap.usp: get_rigset_file_modtime() StartFileOperations() returned not zero.";
+		s = "[Error retrieving modtime]";
+	} else {
+		result = FindFirst ( RIGSET_FILENAME, finfo );
+		if ( result = 0 ) {
+			/* Found file; get timestamps */
+			fdate = FileDate ( finfo, 1 );
+			ftime = FileTime ( finfo );
+			fday = FileDay ( finfo );
+			s = fday + " " + fdate + "  " + ftime;
+		} else {
+			/* File not found */
+			s = "[RIGSET.txt file not found]";
+		}
+	}
+	return ( s );
+}
+//
+//Reads RIGSET file and sends commands to SymNet.
+//
+function fcn_recall_rigset ( integer pid ) {
+	signed_integer f;
+	integer ccnum, ccval;
+	integer num_reset;
+	integer do_delay;
+	string rdbuf[4096];
+	string buf[4096];
+	string line[4096];
+
+	if ( recalling ) {
+		StdOut = "Error: symnet-rigmap.usp: fcn_recall_rigset() called while already recalling.  (Maybe prior recall is hung?)";
+		recall_text = "Error: rigset recalled already recalling.\nPrior recall hung?";
+
+		/* ok, now we're the champ */
+		/* this will kill the older pid(s) if they're still able to run and not hung */
+		recall_pid = pid;
+
+		/** and proceed to recall (again) from the top **/
+	}
+	recalling = 1;
+
+	/* Read RIGSET file */
+	MakeString ( recall_text, "Opening RIGSET file (recall_pid=%u).", pid );
+	f = StartFileOperations();
+	if ( f != 0 ) {
+		MakeString ( StdOut, "Error: SymNet-rigmap.usp: fcn_recall_rigset():  StartFileOperations returned %d.", f );
+		recall_text = "Error: StartFileOperations.";
+		return;
+	}
+
+	f = FileOpen ( RIGSET_FILENAME, _O_RDONLY | _O_TEXT );  
+	if ( f < 0 ) {
+		MakeString ( StdOut, "Error: SymNet-rigmap.usp: fcn_recall_rigset():  (f=%d) Failed to open RIGSET file (%s)", f, RIGSET_FILENAME );
+		recall_text = "Error: FileOpen.";
+		// but continue with labels below...
+	} else {
+		MakeString ( StdOut, "SymNet-rigmap.usp: fcn_recall_rigset(): recalling rig from RIGSET file (recall_all=%u)...", recall_mode_all_fb );
+		
+		/* Seek to beginning (is this really necessary?) */
+		fileseek ( f, 0, SEEK_SET);
+
+		/* Delay for user to read recall_pid message */
+		delay ( TEXT_PAUSE_DELAY );
+
+		/* Start reading file */
+		buf = "";
+		ccnum = 0;
+		ccval = 0;  
+		num_reset = 0;
+		while ( fileread(f,rdbuf,40) > 0 && recall_pid = pid ) {  //grab a modest 40 bytes at a time from the file
+			buf = buf + rdbuf;  //append the 40 bytes to our input buffer (buf) for parsing
+			//trace ( "\n[%s]\n", buf );
+
+			/* Process all complete lines in buffer */
+			/*** lines MUST be of form: #nnnnn=nnnnn\n  ***/
+			/*** i.e. 5 digits, including leading zeros if necessary ***/
+			/*** LIMITED error checking is performed ***/
+			do_delay = 0;
+			while ( find("\n",buf) ) {
+				/* Chop it out and send it for processing */
+				line = remove ( "\n", buf );
+				if ( left(line,1) = "#" && mid(line,7,1) = "=" && mid(line,8,1) != "-" ) {   //skip -0001 (error) results
+					/* Looks plausible; chop the metas and parse out the ints */
+					ccnum = atoi ( mid(line,2,5) );
+					ccval = atoi ( mid(line,8,5) );
+
+					/* Delay? */
+					while ( do_delay ) {
+						/* Delay to throttle sending to bus */
+						delay ( RECALL_TO_SYMNET_DELAY );
+//trace ( "Len(From_Modules)=%u\t INPUT_BUFFER_MAX-Len(From_Modules)=%u\t(that)>=INPUT_BUFFER_SAFE_MARGIN=%u\n", Len(From_Modules), INPUT_BUFFER_MAX-Len(From_Modules), INPUT_BUFFER_MAX-Len(From_Modules)>=INPUT_BUFFER_SAFE_MARGIN );
+						if ( INPUT_BUFFER_MAX - Len(From_Modules) >= INPUT_BUFFER_SAFE_MARGIN ) {
+							do_delay = 0;  //ok to continue
+							//MakeString ( recall_text, "Continuing... [%u/%u]", Len(From_Modules), INPUT_BUFFER_MAX );
+						} else {
+							/* Show wait stat to user */
+							MakeString ( recall_text, "Waiting for buffer... [%u/%u]", Len(From_Modules), INPUT_BUFFER_MAX );
+						}
+					}
+
+					/* Send the set value? */
+					if ( recall_mode_all_fb ) {
+						/** RECALL ALL **/
+						/* Send new set value to SymNet */
+						MakeString ( To_From_Modules, "SUQ 1\rCSG %u %u\r", ccnum, ccval );
+						MakeString ( recall_text, "SUQ 1\nCSG %u %u", ccnum, ccval );  //msg to user
+						ProcessLogic();
+						num_reset = num_reset + 1;
+
+						do_delay = 1;  //delay next loop
+
+					} else if ( cc_val[ccnum] != ccval ) {
+						/** RECALL ONLY IF CHANGED **/
+						/** (same as above block) **/
+						/* Send new set value to SymNet */
+						MakeString ( To_From_Modules, "SUQ 1\rCSG %u %u\r", ccnum, ccval );
+						MakeString ( recall_text, "SUQ 1\nCSG %u %u", ccnum, ccval );  //msg to user
+						ProcessLogic();
+						num_reset = num_reset + 1;
+
+						do_delay = 1;  //delay next loop
+					} else {
+						MakeString ( recall_text, "skipping %u (%u)", ccnum, ccval );  //msg to user
+						do_delay = 0;
+					}
+					ccnum = 0;
+					ccval = 0;  //reset vars just in case ;)
+				}
+			}
+		}
+
+		/* (no more lines) */
+
+		/* Chars still in buffer, e.g. trailing the last \n ? */
+		if ( len(buf) > 0 ) {
+			MakeString ( StdOut, "Warning: SNR: fcn_recall_rigset(): RIGSET read buffer characters still remain following all newlines; disregarding." );
+			MakeString ( recall_text, "WARNING: Rcld %u(%u), but trailing data.", num_reset, pid );
+		} else {
+			MakeString ( recall_text, "Recalled %u SymNet controllers. (recall_pid=%u)", num_reset, pid );
+		}
+
+	}
+
+	/* Regardless, close the shit */
+	FileClose ( f );
+	EndFileOperations();
+	recalling = 0;
+}
+/*** END OF RIGSET FUNCTIONS ***/
+
+
+
+
+//
+//Rebuilds array of contiguous blocks to request updates from.
+//Blocks are more efficient than single controller updates.
+//
+function rebuild_update_blocks() {
+	integer ccnum, ubnum, unitnum, numccs;
+
+	ubnum = 0;
+	unitnum = 0; //unset
+	ub_starts[ubnum] = 0; //unset
+	numccs = 0;
+
+	crawl_text = "Rebuilding update blocks...";
+
+	/* Count up through entire assigned cc list (use unitnums[] array for #>0) */
+	for ( ccnum = 1 to MAX_CC ) {
+		/* Handle unassigned ccnums, so we don't update them */
+		//trace ( "unitnums[%u] = %u\n", ccnum, unitnums[ccnum] );
+		if ( unitnums[ccnum] = 0 ) {
+			/* Did we just end a block? */
+			if ( ubnum > 1 ) {
+				if ( unitnums[ccnum-1] > 0 ) {
+					/* End the prior block */
+					ub_sizes[ubnum] = numccs;
+					unitnum = 0; //unset
+					numccs = 0;
+				}
+			}
+			/* (else just ignore this unassigned ccnum) */
+
+		/* Start new block (end prior) if unitnum changed */
+		/* Or if prior block was maxed */
+		} else if ( ( unitnum != unitnums[ccnum] ) || ( numccs = UB_BLOCKSIZE ) ) {
+			/* End prior block */
+			/* (only if we're not just ending a gap) */
+			if ( unitnums[ccnum-1] > 0 ) {
+				ub_sizes[ubnum] = numccs;
+			}
+
+			/* Start new block */
+			ubnum = ubnum + 1;
+			ub_starts[ubnum] = ccnum;
+			unitnum = unitnums[ccnum];
+			ub_unitnums[ubnum] = unitnum;
+			numccs = 1;  //so far in block
+
+		/* Add this ccnum to current block */
+		} else {
+			numccs = numccs + 1;
+		}
+	}
+
+	/* End the last block if any blocks exist */
+	if ( ubnum > 1 ) {
+		ub_sizes[ubnum] = numccs;
+		unitnum = 0;
+		numccs = 0;
+	}
+
+	/* Set global */
+	num_ubs = ubnum;
+
+	/* Zero next ubnum as a flag */
+	ubnum = ubnum + 1;
+	ub_starts  [ubnum] = 0;
+	ub_sizes   [ubnum] = 0;
+	ub_unitnums[ubnum] = 0;
+
+	/* Trace: dump blocks */
+	//trace ( "\n\n\nub dump: -------------------------------------------\n" );
+	//for ( ubnum = 1 to MAX_UBS ) {
+	//	if ( ub_starts[ubnum] > 0 ) {
+	//		trace ( "ub %u: %u -> %u  (%u)\n", ubnum, ub_starts[ubnum], ub_sizes[ubnum], ub_unitnums[ubnum] );
+	//	}
+	//}
+
+}
+
+//
+// starts and runs gs tracking crawler
+// runs forever (currently)
+// 120708: now only queries rigmapped cc #s.
+// 130311: now may be superseded by another crawl_daemon() call; uses crawl_daemon_pid global.
+//
+function crawl_daemon ( integer pid ) {
+	integer unitnum;
+	string last_start[20];
+
+	last_start = "[Startup]";
+
+	print ( "\nStarting crawl_daemon(#%u) (crawl_held=%u, crawl_run=%u)\n", pid, crawl_held, crawl_run );
+	MakeString ( StdOut, "New crawl_daemon(#%u) starting.", pid );
+
+	/* Set up blocks if not yet set */
+	if ( ub_starts[1] = 0 ) {
+		MakeString ( StdOut, "New crawl_daemon(#%u) rebuilding update blocks...", pid );
+		rebuild_update_blocks();
+		/* Now do we have any blocks? */
+		if ( ub_starts[1] = 0 ) {
+			print ( "\nNo update blocks registered; aborting crawl_daemon.\n" );
+			MakeString ( StdOut, "WARNING: crawl_daemon(#%u) found no update blocks; aborting.", pid );
+			return;
+		}
+	} //Otherwise, assume they're already set up and valid
+
+	MakeString ( StdOut, "New crawl_daemon(#%u) running.", pid );
+
+	/* Loop while we're the champ */
+	crawl_ubnum = 0;
+	while ( crawl_daemon_pid = pid ) {
+		//trace ( "[crawl_daemon loop]" );
+
+		/* Show notice if stopped or held */
+		/* (values are from prior iteration of the loop) */
+		if ( !crawl_run ) {
+			if ( recall_save_crawl_run ) {
+				crawl_text = "Waiting to start...";
+			} else {
+				MakeString ( crawl_text, "%u:%u/%u:%u stopped (u%u)", crawl_round_count, crawl_ubnum, num_ubs, ub_starts[crawl_ubnum], unitnum );
+			}
+		} else if ( crawl_held ) {
+			//MakeString ( crawl_text, "%u:%u:%u ...", crawl_round_count, unitnum, crawl_ubnum );
+			MakeString ( crawl_text, "%u:%u/%u:%u:%u u%u...", crawl_round_count, crawl_ubnum, num_ubs, ub_starts[crawl_ubnum], ub_sizes[crawl_ubnum], unitnum );
+		}
+
+		/* Buffer warning? Then hold off */
+		if ( Len(From_SymNet) > FROM_SYMNET_LEN_WARNING ) {
+			stdout = "Warning: Crawl holding off due to From_SymNet overload...";
+			while ( Len(From_SymNet) > FROM_SYMNET_LEN_WARNING ) {
+				/* Let's back of for at least two full maximum-sized ublocks;
+				 * e.g. about 2 * regular holdoffs */
+				delay ( 2 * CRAWL_BUSY_HOLDOFF );
+			}
+			delay ( CRAWL_BUSY_HOLDOFF );  //and one more for good measure, since sampling is somewhat arbitrary
+			stdout = "Warning: ...Crawl resuming after overload holdoff.";
+		}
+
+		/* Pause? */
+		if ( crawl_held || !crawl_run ) {
+			while ( crawl_held || !crawl_run ) {
+				/* Wait while held and not running */
+				//trace ( "[crawl_daemon holding1(held=%u,run=%u,sleep=%u)]\n", crawl_held, crawl_run, CRAWL_PAUSE_SLEEP );
+				delay ( CRAWL_PAUSE_SLEEP );
+				//trace ( "[crawl_daemon holding2(held=%u,run=%u,sleep=%u)]\n", crawl_held, crawl_run, CRAWL_PAUSE_SLEEP );
+			}
+		} else {
+			delay ( CRAWL_TURBO_PACE );  //if we didn't sleep, then at least delay by the minimum turbo delay
+		}
+	
+		/* Increment to next nonzero unitnum ccnum */
+		crawl_ubnum = crawl_ubnum + 1;
+
+		/* Did we just hit the end of the ubnums list? */
+		if ( ub_starts[crawl_ubnum] = 0 ) {
+
+			/* Restart @ 1 */
+			/* (We do know that block 1 exists from test above) */
+			trace ( "\nSNR: crawl_daemon map crawl time #%u: %s-%s for %u update blocks.\n",
+				crawl_round_count, last_start, Time(), crawl_ubnum-1 );
+			last_start = Time();
+			crawl_ubnum = 1;
+			crawl_round_count = crawl_round_count + 1;
+
+			/* Turbo mode only shall run only once and then exit */
+			if ( turbo_crawl_fb ) {
+				return;
+			}
+		}
+		unitnum = ub_unitnums[crawl_ubnum];
+	
+		/* Hopefully this will give us a nice uninteruptable timeslice after delay() returns... */
+		ProcessLogic();
+
+		/* Pacing delay: unless turbo mode */
+		/* Note that this delay is in addition to the CRAWL_BUSY_HOLDOFF delay that gets tripped on every command anyway,
+		 * which is arguably an algorigthm flaw.  Better would be if the crawl loop, when running, were pacing itself,
+		 * rather than getting held off by its own commands.  For now, however, it is adequate to allow its own commands
+		 * to serve as its dominant pacing mechanism. [FIXME]
+		 * In the future, we may have multiple priority Tx queues, so the crawl can sit in its own priority-reduced queue.
+		 */
+		if ( !turbo_crawl_fb ) {
+			delay ( CRAWL_PACE );
+		}
+
+		/* Send SU+GSB2 command */
+		MakeString ( To_From_Modules, "SUq %u\rGSB2 %u %u\r", unitnum, ub_starts[crawl_ubnum], ub_sizes[crawl_ubnum] );  //send to Tx queue
+		MakeString ( crawl_text, "%u:%u/%u:%u:%u SU %u", crawl_round_count, crawl_ubnum, num_ubs, ub_starts[crawl_ubnum], ub_sizes[crawl_ubnum], unitnum );
+	}
+	MakeString ( StdOut, "crawl_daemon(#%u) superseded; exiting.", pid );
+}
+
+//
+// Loops quietly, waiting for ACK flag to go high, then resets flag and returns.
+//
+function wait_for_ack() {
+	integer startTime, nowTime;
+
+	startTime = GetHSeconds();
+	//trace ( "\n>>>>>>>>>>>>>>Wait_for_ack() starting at [%u]...\n", startTime );
+	//StdOut = "wait_for_ack()";
+	if ( ACK ) {
+		//StdOut = "sns:w4a: sweet, ACK already waiting";
+//DBG:
+if ( SYMNET_MINIMUM_PACE > 0 )
+		delay ( SYMNET_MINIMUM_PACE );
+	}
+	while (1) {
+		nowTime = GetHSeconds();  //for some reason GetHSeconds() in the if() comparison is not calculating correctly, so we break it out here
+		if ( ACK ) {
+			/* Got ACK; reset flag and return */
+			//trace ( "\n***\n*** [ACK] in %u\n*** (%u,\n*** %u)\n***\n***\n", nowtime-starttime, nowtime, starttime );
+			//StdOut = "              /ack";
+			ACK = 0;
+			return;
+		}
+
+		/* Waiting too long yet? */
+		if (nowTime > startTime+WAIT_FOR_ACK_TIMEOUT ) {
+			MakeString ( StdOut, "Error: SymNetSerial.usp: wait_for_ack() never received ACK/NAK in %u centiseconds!!!!!!!!!!!!!", WAIT_FOR_ACK_TIMEOUT );
+			//StdOut = "sns:w4a: no ACK; proceeding";
+			//trace ( "\n  [%u/%u/%u/%u]\n", GetHSeconds(), nowtime, startTime, startTime+WAIT_FOR_ACK_TIMEOUT );
+			return;  //move on anyway
+		}
+
+		//trace ( "\n  re-waiting for ACK...[%u/%u/%u/%u]\n", GetHSeconds(), startTime, nowTime, startTime+WAIT_FOR_ACK_TIMEOUT );
+		delay ( WAIT_FOR_ACK_INNER_DELAY );
+	}
+}
+
+//
+// Called at startup to get SymNet to push out all the values.
+//
+function repush_from_SymNet() {
+	MakeString ( StdOut, "repush_from_SymNet()" );
+	To_From_Modules = "\rSUQ 1\rPUR\r";
+}
+
+//
+//Tries to fix junky SymNet response
+//
+string_function fix_symnet_response ( string r ) {
+	string s[255];
+	MakeString ( StdOut, "fix_symnet_response(%s) (len=%u)...", r, len(r) );
+	s = right ( r, 13 );
+	MakeString ( StdOut, "....fixed:(%s)", s );
+	return ( s );
+}
+
+//
+//Recalculates Rx_Buffer_Meter based on From_SymNet length
+//
+/* Values calculated from Excel\Rx buffer meter scaling.xls and some analytic geometry */
+/* (rounded to nearest integer of course) */
+#DEFINE_CONSTANT RX_REGION_CUTOFF_AB 66
+#DEFINE_CONSTANT RX_REGION_CUTOFF_BC 261
+#DEFINE_CONSTANT RX_SCALE_A 252
+#DEFINE_CONSTANT RX_SCALE_B 84
+//disregarded in code below, since unity scale: #DEFINE_CONSTANT RX_SCALE_C 1  //1.03 rounded
+#DEFINE_CONSTANT RX_OFFSET_B 10922
+#DEFINE_CONSTANT RX_OFFSET_C 32499
+function update_Rx_Buffer_Meter() {
+	integer buflen;
+	buflen = Len ( From_SymNet );
+	if ( buflen < RX_REGION_CUTOFF_AB ) {
+		Rx_Buffer_Meter = buflen * RX_SCALE_A;
+	} else if ( buflen < RX_REGION_CUTOFF_BC ) {
+		Rx_Buffer_Meter = buflen * RX_SCALE_B + RX_OFFSET_B;
+	} else if ( buflen < 65535 ) {
+		Rx_Buffer_Meter = buflen + RX_OFFSET_C;  //RX_SCALE_C = 1, so don't bother to multiply by it
+	} else {
+		Rx_Buffer_Meter = 65535; //limit to max
+	}
+}
+
+//
+//Listens to SymNet buffer.  Runs forever, supposedly.
+//
+function symnet_daemon( integer pid ) {
+	string cmd[14]; //, junk[255]; //normally these would be 14, but with the erratic SymNet junk, we'll have to accommodate some of that
+	integer ccnum, ccval;
+
+	MakeString ( StdOut, "Starting SymNetSerial symnet_daemon( pid=%u; Len(From_SymNet)=%u )", pid, Len(From_SymNet) );
+
+	/* Listen for each command from SymNet
+	 * (each command is terminated by \r) */
+	while ( symnet_daemon_pid = pid ) {
+//trace("\n\n\nsymnet_daemon: gathering From_SymNet...\n" );
+		//Rx_Buffer_Meter = len ( From_SymNet ) * Len_Rx_Scale;  //before wait
+		if ( !TEST_skip_RxMeterUpdate ) update_Rx_Buffer_Meter();
+		cmd = gather ( "\r", From_SymNet );
+		if ( !TEST_skip_RxMeterUpdate ) update_Rx_Buffer_Meter();
+		//Rx_Buffer_Meter = len ( From_SymNet ) * Len_Rx_Scale;  //after wait
+//print("symnet_daemon: From_SymNet > [%s]\n", From_SymNet );
+//trace("\nsymnet_daemon: From_SymNet gathered cmd:[%s]\n", cmd );
+
+		if ( Flush_Buffers ) {
+			/* Flush the buffer */
+			if ( Len(From_SymNet) > 0 ) {
+				print ( "\n\nWARNING: SymNet-rigmap.usp: caught Flush_Buffers signal; flushing %u bytes out of the From_SymNet buffer.\n\n", len(From_SymNet) );
+				MakeString ( StdOut, "WARNING: signal flushing From_SymNet (%u bytes)", len(From_SymNet) );
+				From_SymNet = "";
+			}
+			cmd = "SUQ 1\n";  //need a quiet command to quickly bypass the wait_for_ack() call below
+		} else if ( left(cmd,1) = "#" ) {
+			/* Controller update */
+			//120724: only allow strict responses now; don't try to fix
+			/* check for proper cmd length: #ccccc=vvvvv\r (length=13) */
+			if ( len(cmd) != 13 ) {
+				print ( "Error: SNR:symnet_daemon() received len!=13 response from symnet: [%s]\n\n", cmd );
+				MakeString ( StdOut, "Error: SNR:symnet_daemon() received len!=13 response from symnet: [%s]", cmd );
+			} else if ( mid(cmd,8,1) = "-" ) {
+				//controller not assigned (returned value is negative); probably query was to wrong unit
+				if ( log_ccval_fb ) MakeString ( StdOut, "Warning: (disregarding) negative value response from SymNet: [%s]", cmd );
+				//junk=""; //nop
+			} else {
+				/* OK to process cmd */
+				ccnum = atoi(mid(cmd,2,5));
+				ccval = atoi(mid(cmd,8,5));
+				if ( ccnum=0 ) MakeString ( StdOut, "Error: SNR:symnet_daemon(): parsed ccnum=0 from cmd=[%s]", cmd );
+				else {
+					if ( cc_val[ccnum] != ccval ) {
+						/* Go ahead change cc_val */
+						cc_val[ccnum] = ccval; //valid ccnum setting
+						NV_cc_val[ccnum] = ccval; //NVram as well
+						if ( log_ccval_fb ) print ( "~ ~ ~ ~ cc_val[%u=%u]\n", ccnum, ccval );
+					} else {
+						/* ccval is same as cc_val bus; don't spin the handlers redundantly */
+						if ( log_ccval_fb ) print ( "~ ~ ~ ~ cc_val[%u=%u] not rechanging\n", ccnum, ccval );
+					}
+				}
+			}
+			//trace ( "From_SymNet: [%u]=[%u]\n", ccnum, ccval );
+
+			/* 120427: try always setting ACK flag on every reply, since we're getting too many non-acks, when other data is coming in */
+			//120724: canceling for now...
+			//ACK = 1;
+
+		} else {
+			/* ACK or NAK?  Set flag */
+			if ( cmd = "ACK\r" ) {
+				if ( ACK ) {  //debugging test...
+					//StdOut = "    -->ACK DOUBLE";
+					print ( "\nWarning: received ACK, but ACK flag already set.\n" );
+				} else {
+					//StdOut = "    -->ACK.";
+				}
+				ACK = 1;
+			} else if ( cmd = "NAK\r" ) {
+				if ( ACK ) {  //debugging test...
+					//StdOut = "    -->NAK ACK DOUBLE";
+					print ( "\nWarning: received NAK, but ACK flag already set.\n" );
+				} else {
+					//StdOut = "    -->NAK ACK.";
+				}
+				ACK = 1;  //good enough, move on
+			} else {
+				/* Unknown response, maybe noise; warn about it */
+				/* 120414: it seems some junk is coming in around the data and acks; try to find ACK */
+				if ( find("ACK\r",cmd)>0 ) {
+					/* Found junky ACK */
+					StdOut = "    -->JUNK ACK.";
+					ACK=1;
+					MakeString ( StdOut, "Error: SNR:symnet_daemon() interpreting junky ACK: [%s]", cmd );
+				} else {
+					/* Just bitch about it */
+					MakeString ( StdOut, "Error: SNR:symnet_daemon() discarding invalid cmd: [%s]", cmd );
+				}
+			}
+		}
+		//print ( "symnet_daemon(pid %u): relooping...\n", pid );
+	}
+	MakeString ( StdOut, "Warning:  SymNet-rigmap.usp:symnet_daemon(%u): EXITING due to new symnet_daemon_pid=%u.", pid, symnet_daemon_pid );
+}
+
+//
+//Hack to define these waits before cancel commands
+//
+function rewait_crawl_busy_holdoff() {
+	Wait ( CRAWL_BUSY_HOLDOFF, Wait_Crawl_Busy_Holdoff ) crawl_held = 0;  //restart holdoff timer
+}
+//
+// Daemon to listen for commands from modules
+// and put them in the queue for sending to the SymNet device.
+// 
+function queue_daemon( integer pid ) {
+	string cmd[30];  //max length for a typical symnet command or string of a group of commands
+	string tmp[30];
+	integer num, priority, regular_unitnum;
+
+	print ( "\n\nStarting SymNetSerial queue_daemon( pid=%u, Len(From_Modules)=%u )>\n>[%s]\n\n", pid, Len(From_Modules), From_Modules );
+	MakeString ( StdOut, "Starting SymNetSerial queue_daemon( pid=%u, Len(From_Modules)=%u )", pid, Len(From_Modules) );
+
+	/* Blink status for user */
+	pulse ( 200, tx_busy );
+	delay ( 100 );
+	pulse ( 200, tx_busy );
+
+	while ( queue_daemon_pid = pid ) {
+		Tx_Buffer_Meter = Len(From_Modules) * Len_Tx_Scale;
+		if ( Len(From_Modules) > INPUT_BUFFER_MAX ) Tx_Buffer_Meter = 65535; //limit after overflowing for visual
+		//trace ( "\n\n\nqueue_daemon(): re-gathering() with len=%u...\n", len(From_Modules) );
+		//trace ( "[sns:qd:gather:start]\n" );
+		
+		/* Get command */
+		cmd = ""; //is this necessary?
+		while ( cmd = "" ) {
+			/* First try high-priority channel */
+			if ( Find("\r", From_Modules_PRIORITY) > 0 ) {
+				/* PRIORITY command */
+				cmd = Remove ( "\r", From_Modules_PRIORITY );  //waits here for next \r-terminated command from modules
+trace ( "*** PRIORITY CMD='%s'\n", cmd );
+				priority = 1;
+			} else {
+				/* Regular queue command */
+
+				/* Just ending a priority command? */
+				if ( priority ) {
+					/* Restore prior regular unit num? */
+					MakeString ( cmd, "SUQ %u\r", regular_unitnum );
+				} else {
+					/* Get regular command normally */
+					cmd = Gather ( "\r", From_Modules, PRIORITY_RECHECK_TIMEOUT );  //waits here for next \r-terminated command from modules
+				}
+				priority = 0;
+			}
+		}
+		//trace ( "[sns:qd:gather:end]\n" );
+//x1=2;
+
+		/* Check for canceled buffer */
+		ProcessLogic();  //sometimes button press signal was missing
+		if ( Flush_Buffers ) {
+			/* Flush the buffer */
+			//trace ( "\n\n\nqueue_daemon(): flushing buffers...?\n" );
+			if ( Len(From_Modules) > 0 ) {
+				print ( "\n\nWARNING: SymNet-rigmap.usp: caught Flush_Buffers signal; flushing %u bytes out of the From_Modules buffer.\n\n", len(From_Modules) );
+				MakeString ( StdOut, "WARNING: signal flushing From_Modules (%u bytes)", len(From_Modules) );
+				From_Modules = "";
+			}
+			cmd = "SUQ 1\n";  //need a quiet command to quickly bypass the wait_for_ack() call below
+		} else {
+			/* Normal command */
+			//trace ( "\n\n\nqueue_daemon(): got gathered cmd[%s]\n", cmd );
+//x1=3;
+			cmd = Upper ( cmd );
+		}
+		
+		/* Send SU/SUQ only if changing (and note the change in curr_unit) */
+		if ( left(cmd,2) = "SU" ) {
+			if ( left(cmd,4) = "SUQ " ) {
+				tmp = mid(cmd,5,5);
+				num = atoi ( tmp );
+				if ( !priority ) regular_unitnum = num;
+				//trace ( "\nsnr: SUQ: tmp=[%s] num=%u cmd=[%s]\n", tmp, num, cmd );
+//x1=4;
+			} else if ( left(cmd,3) = "SU " ) {
+				tmp = mid(cmd,4,5);
+				num = atoi ( tmp );
+				if ( !priority ) regular_unitnum = num;
+				//trace ( "\nsnr: SU: tmp=[%s] num=%u cmd=[%s]\n", tmp, num, cmd );
+//x1=5;
+			}
+			if ( num != curr_unit ) {
+				/* New unit #; send it out */
+
+				//120729: delay before and after SU commands
+				//trace ( "\n\t[SU_TIME_BUFFER_DELAY(pre)=%u]\n", SU_TIME_BUFFER_DELAY );
+				//delay ( SU_TIME_BUFFER_DELAY );
+//x1=6;
+
+				//120811: rebuild cmd to SUQ command, so that we can proceed quickly to next cmd
+				MakeString ( cmd, "SUQ %u\r", num );
+				To_SymNet = cmd;
+				if ( log_cmd_fb ) print ( "~ ~ ~ ~ TO_SymNet[%s] <reforming SU/SUQ to SUQ>\n", left(cmd,len(cmd)-1) ); //chop trailing CR
+				tx_busy = 1;
+				curr_unit = num;
+				//trace ( "q_d setting curr_unit to %u\n", curr_unit );
+//x1=7;
+
+				//120729: delay before and after SU commands
+				//trace ( "\n\t[SU_TIME_BUFFER_DELAY(post)=%u]\n", SU_TIME_BUFFER_DELAY );
+				//delay ( SU_TIME_BUFFER_DELAY );
+
+				//and don't update the meter on a SU/SUQ (saves time)
+//x1=8;
+
+			}
+		} else {
+			/* All other commands just send it out */
+			To_SymNet = cmd;
+			if ( log_cmd_fb ) print ( "~ ~ ~ ~ To_SymNet[%s]\n", left(cmd,len(cmd)-1) ); //chop trailing CR
+			tx_busy = 1;
+			Tx_Buffer_Meter = Len(From_Modules) * Len_Tx_Scale;
+			if ( Len(From_Modules) > INPUT_BUFFER_MAX ) Tx_Buffer_Meter = 65535; //limit after overflowing for visual
+
+			/* Restart holdoff timer (only if crawl is running) */
+			//pulse ( STANDARD_PULSE_TIME, crawl_rehold );  <<<old SIMPL logic method
+			if ( crawl_run ) {
+				crawl_held = 1;
+				CancelWait ( Wait_Crawl_Busy_Holdoff );
+				rewait_crawl_busy_holdoff();
+			}
+
+		}
+
+		//trace ( "To_SymNet_COM=[%s]\t\tremaining in buffer: %u\n", left(cmd,len(cmd)-1), len(From_Modules) );
+//x1=9;
+
+		/* Wait for ack? */
+		if ( Upper(Left(cmd,3)) = "SUQ" ) {
+			/* SUQ command; proceed quietly */
+			//trace ( "[sns:qd:delay1:start]\n" );
+//x1=10;
+//DBG:
+if ( SYMNET_MINIMUM_PACE > 0 )
+			delay ( SYMNET_MINIMUM_PACE );
+			//trace ( "[sns:qd:delay1:end]\n" );
+//x1=11;
+		} else if ( Left(cmd,2) = "GS" ) {
+			//trace ( "[sns:qd:delay2:start]\n" );
+//x1=12;
+//DBG:
+if ( SYMNET_MINIMUM_PACE > 0 )
+			delay ( SYMNET_MINIMUM_PACE );
+			//trace ( "[sns:qd:delay2:end]\n" );
+//x1=13;
+		} else {
+			/* All other commands, wait for ACK */
+			//trace ( "[sns:qd:waitforack1:start]\n" );
+//x1=14;
+if ( !DBG_ACKOFF )
+			wait_for_ack();
+			//trace ( "[sns:qd:waitforack1:end]\n" );
+//x1=15;
+		}
+		if ( len(From_Modules) = 0 ) {
+			tx_busy = 0;
+		}
+	}
+	print ( "\nWarning:  SymNet-rigmap.usp:queue_daemon(#%u): EXITING due to new queue_daemon_pid=%u.\n", pid, queue_daemon_pid );
+	MakeString ( StdOut, "WARNING: queue_daemon(#%u): EXITING due to new queue_daemon_pid=%u.", pid, queue_daemon_pid );
+}
+
+//
+//Cancels pushing for Push-On-Demand meters, usually called on startup, since SymNet boots to pushing all.
+//
+function stop_all_meters() {
+	print ("\nSymNet-rigmap.usp: resetting meter pushes (%u-%u)\n", METERS_PUD_START, METERS_PUD_END );
+	curr_unit = 1;
+
+	/* Send high-priority command directly out to COM port... */
+	//140201: won't this screw up the global unit #???
+	//makestring ( To_SymNet, "SUQ 1\rPUD %u %u\r", METERS_PUD_START, METERS_PUD_END );
+	//Try our new PRIORITY queue instead
+	makestring ( To_From_Modules_PRIORITY, "SUQ 1\rPUD %u %u\r", METERS_PUD_START, METERS_PUD_END );
+
+	/* ...but also send the SUQ to the queue, to keep the queue unit in sync */
+	/* (re-sending the PUD wouldn't hurt either) */
+	makestring ( To_From_Modules, "SUQ 1\rPUD %u %u\r", METERS_PUD_START, METERS_PUD_END );
+}
+
+//
+//One-shot watchdog function.
+//May be called repetitively, e.g. by a timer.
+//
+function watchdog_check() {
+
+	/* Check Rx Buffer:
+	 * If too large, then assume meter data is overwhelming, so stop all meters.
+	 */
+	if ( Len(From_SymNet) > FROM_SYMNET_LEN_WARNING ) {
+		/* Stop all meters */
+		stop_all_meters();
+		MakeString ( StdOut, "WARNING: From_SymNet > %u; stopping all meters", Len(From_SymNet) );
+		stop_all_meters();
+	}
+
+	/* Check Tx (From_Modules) Buffer:
+	 * If too large, then maybe the Queue Daemon hung up, so restart it.
+	 * TODO: restart daemon; currently only warns
+	 */
+	if ( Len(From_Modules) > FROM_MODULES_LEN_WARNING ) {
+		MakeString ( StdOut, "WARNING: Tx Buffer > %u; restart Queue Daemon?", Len(From_Modules) );
+		/* ... */
+	}
+}
+
+//
+//Recalls ccval data from NVRAM
+//
+function recall_nvram_data() {
+	integer i;
+	print ( "\nSNR: recalling %u cc values from NVRAM.\n", MAX_CC );
+	for ( i = 1 to MAX_CC ) {
+		//120728: changing to NVRAM recall...needs testing...
+		//if ( cc_val[i] > 0 ) cc_val[i] = 0; //don't re-push the same zero value; that will spin too many change handlers
+		if ( cc_val[i] != NV_cc_val[i] ) cc_val[i] = NV_cc_val[i]; //recall NVram val; TODO: may need to disable downstream change handlers?
+	}
+	print ( "\nSNR: done recalling %u cc values from NVRAM.\n", MAX_CC );
+}
+
+//
+//Zeros out all rigmap config data,
+//e.g. before a new config is loaded, useful since rigmap config
+//will most likely not entirely fill the alotted config space.
+//
+function zero_config_data() {
+	integer i;
+trace ( "\nSNR zero_config_data()\n" );
+	rigmap_loaded = 0;
+	num_ccs = 0;
+	rigmap_compile_time = "";
+
+	/* Reset all unitnums */
+	for ( i = 1 to MAX_CC ) unitnums[i] = 0;
+
+	/* GW hack for testing: reserve unitnum #5000 */
+	unitnums[5000] = 9; //9 is arbitrary spoofed unitnum
+}
+
+//
+//Loads rigmap config file.
+//All we need is unitnums, so we'll ignore everything else.
+//120610: now we need some header info as well
+//
+function load_rigmap() {
+	integer i, startcc, endcc, unitnum;
+	string tmpstring[MAXLEN_RIGMAP_ARG];
+	signed_integer f;
+	string rdbuf[4096];
+	string buf[4096];
+	string line[4096];
+	//file_info myfileinfo;
+	//signed_integer numBytesRead;
+	integer foundEnd;
+trace ( "\nSNR load_rigmap()\n" );
+
+	/* Read config file for ids[], types[], and colors[] arrays, plus name data */
+	f = StartFileOperations();
+	if ( f != 0 ) {
+		print ("\n\nError: SymNet-rigmap.usp: start_config():  StartFileOperations returned %d.\n", f );
+		error = 1;
+		return;
+	}
+
+	f = FileOpen ( RIGMAP_FILENAME, _O_RDONLY | _O_TEXT );  
+	if ( f < 0 ) {
+		print ("\n\nError: SymNet-rigmap.usp: start_config():  (f=%d) Failed to read config file (%s)\n", f, RIGMAP_FILENAME );
+		error = 1;
+		// but continue with labels below...
+	} else {
+		print ( "\n\n\nSymNet-rigmap.usp: load_rigmap(): reading file...\n\n" );
+		
+		/* Seek to beginning (is this really necessary?) */
+		fileseek ( f, 0, SEEK_SET);
+
+		/* Start reading file */
+		buf = "";
+		foundEnd = 0;
+		while ( fileread(f,rdbuf,40) > 0 ) {  //grab a modest 40 bytes at a time from the file
+			buf = buf + rdbuf;  //append the 40 bytes to our input buffer (buf) for parsing
+			//trace ( "\n[%s]\n", buf );
+
+			/* Process all complete lines in buffer */
+			while ( find("\n",buf) ) {
+				/* Chop it out and send it for processing */
+				line = remove ( "\n", buf );
+				rtrim ( line );
+				//trace ( "\n\nline=[%s]\n", line );
+				if ( left(line,6) = "modid\t" ) {
+					tmpstring = remove ( "\t", line );  //opcode, don't need it
+					tmpstring = remove ( "\t", line );  //id, don't need it
+					tmpstring = remove ( "\t", line );  //modtype, don't need it
+					tmpstring = remove ( "\t", line );  //label, don't need it
+					tmpstring = remove ( "\t", line );  //ENCODED startcc, we'll use this
+					i = atoi(tmpstring);  //borrow i, as the integer encoded startcc
+					startcc = decode_symnet_ccnum ( i );
+					unitnum = decode_symnet_unitnum ( i );
+					tmpstring = remove ( "\t", line );  //numccs, we'll use this
+					if ( tmpstring = "" ) tmpstring = line;  //end of line (no trailing tab, so just use rest of line)
+					endcc = startcc + atoi ( tmpstring ) - 1;
+
+					/* Set unit #s for all ccs in this mod's range */
+					//trace ( "\n\n\nSymNet-rigmap unitnums:            %u to %u (unitnum=%u)\n\n\n", startcc, endcc, unitnum );
+					if ( startcc=0 || endcc=0 || unitnum=0 || unitnum > MAX_UNITNUM || startcc > MAX_CC || endcc > MAX_CC ) {
+						print ( "\nError: SymNet-rigmap.usp: load_rigmap interpreted data outof bounds: startcc=%u, endcc=%u, unitnum=%u\n\n", startcc, endcc, unitnum );
+						error = 1;
+					} else {
+						/* OK to add unitnums in this range */
+						for ( i = startcc to endcc ) {
+							unitnums[i] = unitnum;
+							num_ccs = num_ccs + 1;
+						}
+					}
+				} else if ( upper(left(line,13)) = "#COMPILETIME=" ) {
+					rigmap_compile_time = mid(line,14,len(line));
+					chomp ( rigmap_compile_time );
+				} else if ( upper(left(line,12)) = "#SOURCEFILE=" ) {
+					tmpstring = remove_arg ( line );
+					rigmap_sourcefile = remove_arg ( line );
+				} else if ( upper(left(line,4)) = "END\t" ) {
+					foundEnd = 1;
+					//trace ( "\n\nfoundend\n\n" );
+					break;
+				}
+			}
+
+			if (foundEnd) break;
+			/* Loop to keep reading buffer */
+			//trace ( "[.]" );
+		}
+
+		/* Close file */
+		print ( "\n...loading SymNet-rigmap config mapfile done.\n" );
+		fileclose ( f );
+		//trace ( "\n...SNR rigmap file closed\n" );
+	}
+
+	/* End file operations */
+	EndFileOperations();
+	//trace ( "\n...SNR rigmap file operations complete\n" );
+
+	/* Set system flag */
+	rigmap_loaded = 1;
+}
+
+//
+// Returns string for new filename.
+//
+string_function get_new_ccval_filename() {
+	string s[255], rigmapname[255];
+	integer pos;
+
+	/* Get shortened name of original rigmap source file */
+	rigmapname = rigmap_sourcefile;  
+
+	/* Chop path info */
+	pos = ReverseFind ( "\\", rigmapname );
+	if ( pos > 0 ) {
+		rigmapname = mid ( rigmapname, pos+1, 255 );
+	}
+
+	/* Chop last dot ext */
+	pos = ReverseFind ( ".", rigmapname );
+	if ( pos > 0 ) {
+		rigmapname = left ( rigmapname, pos-1 );
+	}
+
+	MakeString ( s, "ccout-%02u%02u%02u-%02u%02u%02u-%s.ccval", GetYearNum(), GetMonthNum(), GetDateNum(), GetHourNum(), GetMinutesNum(), GetSecondsNum(), rigmapname );
+	print ( "\nWriting CCOUT file: %s\n", s );
+	return ( s );
+}
+
+//
+// Writes current ccvals to NVRAM.
+//
+function writenvram_ccvals() {
+	integer i;
+	signed_integer f, err;
+	for ( i = 1 to MAX_CC ) {
+		NV_cc_val[i] = cc_val[i];
+	}
+}
+//
+// Writes current ccvals to file.
+// No longer writes to NVRAM; must be done explicitly using new signal.
+//
+function writefile_ccvals() {
+	integer i;
+	signed_integer f, err;
+	string s[255], filename[255], filename_full[355];
+
+
+	StartFileOperations();
+	filename = get_new_ccval_filename();
+	filename_full = RIGMAP_CCOUT_DIR + filename;
+	dump_status_text = filename + "...";
+
+#IF_SERIES2
+	f = FileOpen ( filename_full, _O_WRONLY|_O_CREAT|_O_TEXT );
+#ENDIF
+#IF_SERIES3
+	f = FileOpenShared ( filename_full, _O_WRONLY|_O_CREAT|_O_TEXT );
+#ENDIF
+	if ( f <= 0 ) {
+		/* Error */
+		MakeString ( StdOut, "Error: writefile_ccvals() could not write file \"%s\" (Err=%d)\n", filename_full, f );
+		dump_status_text = "file open error";
+		EndFileOperations();
+		return;
+	}
+
+	/* Write file header */
+	s = filename + "\n";
+	FileWrite ( f, s, Len(s) );
+	s = "rigmap_compile_time: " + rigmap_compile_time + "\n";
+	FileWrite ( f, s, Len(s) );
+	s = "rigmap_sourcefile: " + rigmap_sourcefile + "\n";
+	FileWrite ( f, s, Len(s) );
+	s = "SMW Compile Time: " + get_smw_compile_time() + "\n";
+	FileWrite ( f, s, Len(s) );
+
+
+	/* Roll them out */
+	for ( i = 1 to MAX_CC ) {
+		MakeString ( s, "#%05u=%05u\n", i, cc_val[i] );
+		FileWrite ( f, s, Len(s) );
+	}
+
+	err = FileClose(f);
+	if ( err <> 0 ) {
+		/* Error closing file */
+		print ( "Error: writefile_ccvals() could not close file \"%s\" (Err=%d)\n", filename_full, err );
+		dump_status_text = "file close error";
+		EndFileOperations();
+		return;
+	}
+	EndFileOperations();
+
+	dump_status_text = filename + " saved";
+}
+
+//
+// Same as writefile_ccvals(), but outputs to the buffer output (ccvals_dump)
+// Also uses dump_status_text.
+// Outputs to ccvals_dump
+//
+function output_ccvals() {
+	integer i;
+	string s[255];
+
+	dump_status_text = "Outputting ccvals...";
+
+	/* Write file header */
+	ccvals_dump = get_new_ccval_filename() + "\n";
+	ccvals_dump = "rigmap_compile_time: " + rigmap_compile_time + "\n";
+	ccvals_dump = "rigmap_sourcefile: " + rigmap_sourcefile + "\n";
+	ccvals_dump = "SMW Uptime: " + get_smw_compile_time() + "\n";
+
+
+	/* Roll them out */
+	for ( i = 1 to MAX_CC ) {
+		MakeString ( ccvals_dump, "#%05u=%05u\n", i, cc_val[i] );
+	}
+
+	dump_status_text = "CCVals dump done.";
+}
+
+
+
+
+
+//
+//
+// Event Handlers
+//
+//
+
+/*** RIGSET Handlerss ***/
+//
+//Toggle recall "all" or "changed controllers only"
+PUSH recall_mode_all_pr {
+	recall_mode_all_fb = 1;
+}
+PUSH recall_mode_changesonly_pr {
+	recall_mode_all_fb = 0;
+}
+
+//
+//Recall Rigset / Popup dialogs
+RELEASE recall_RIGSET_pr {
+	MakeString ( popup_text, "Recall RIGSET.txt file?\r\r[%s]",	get_rigset_file_modtime() );
+	popup_ok_cancel_sp = 1;
+	popup_mode = POPUP_MODE_ASK_RECALL_RIGSET;
+}
+RELEASE popup_cancel_pr {
+	if ( popup_mode = POPUP_MODE_OFF ) return;
+	popup_text = "";
+	popup_ok_cancel_sp = 0;
+	popup_mode = POPUP_MODE_OFF;
+}
+RELEASE popup_ok_pr {
+	integer newpid;
+	if ( popup_mode = POPUP_MODE_OFF ) return;
+
+	/* Always clear both sp dialogs */
+	popup_ok_cancel_sp = 0;
+	popup_ok_sp = 0;
+
+	/* Handle the "OK" dialog (just clear the subpages) */
+	cswitch ( popup_mode ) {
+		case (POPUP_MODE_OK_MSG): { 
+			/* Action: just reset the popup mode (sp is already cleared) */
+			popup_mode = POPUP_MODE_OFF;
+			return;
+		}
+		case (POPUP_MODE_ASK_RECALL_RIGSET): {
+			/* Action: recall RIGSET */
+			MakeString ( popup_text, "Recalling RIGSET.txt file..." );
+			popup_ok_sp = 1;
+			popup_mode = POPUP_MODE_OK_MSG;
+			recall_pid = recall_pid + 1;
+			newpid = recall_pid; //makes arg pass-by-value for 2-series compatibility //(yes this is a race right here)
+			fcn_recall_rigset ( newpid );
+			//leave OK popup active.
+			break;
+		}
+	}
+}
+
+//
+//Repurposing the SMW timers back into the original SIMPL+ timers, for the sake of the 3-series.
+//(QM-RMC didn't like the SIMPL+ timers during VPT file uploads.)
+//This simply resumes the crawl, as opposed to triggering one crawl advance.
+PUSH adv_crawl {
+	crawl_held = 0;
+}
+
+//
+// Allows users to call for SymNet Push Refresh any time.
+//
+PUSH Repush_SymNet {
+	resynced = 0; //indicate progress to user
+	repush_from_SymNet();
+	delay ( SIMULATED_RESYNC_DURATION );
+	resynced = 1;
+}
+
+
+//
+//Receiving User Input
+//Redirects value out to the SymNet
+//
+//120419: deprecated; never used; replaced with cc_bump
+//CHANGE cc_set {
+	//integer ui, set_level;
+//	string tmp[50];
+//	ui = getlastmodifiedarrayindex();
+//	set_level = cc_set[ui];
+//trace(">>controller %u < %u\n", ui, set_level);
+//	makestring ( To_SymNet, "CSG %u %u\r", ui, set_level );
+//	makestring ( tmp, "CSG %u %u\r", ui, set_level );
+//trace("----[%s]\n", tmp);
+//}
+
+//
+//bumps specified CC (index) by specified value (value)
+//Does no checking.
+//
+CHANGE cc_bump {
+	integer ccnum;
+	signed_integer bumpval;
+	ccnum = getlastmodifiedarrayindex();
+	bumpval = cc_bump[ccnum];
+
+
+	/* Global (CSG) bumps: OK to bump without unitnum */
+	cswitch ( cc_bump[ccnum] ) {  //must use cc_bump[ccnum], not bumpval; since bumpval is a SIGNED int; will not cswitch compare with +Int constants from 3-series compiler
+		case (BUMP_CC_ON): {
+			/* Magic value to bump to 65535; send as PRIORITY (e.g. for emergency mutes) */
+			if ( log_cmd_fb ) trace ( "\n\t\t\t\tcc_bump MAGIC ON(%u)\n", ccnum );
+			MakeString ( To_From_Modules, "SUQ 1\rCSG %u 65535\r", ccnum );
+			break;
+		}
+		case (BUMP_CC_ON_PRIORITY): {
+			/* Magic value to bump to 65535; send as PRIORITY (e.g. for emergency mutes) */
+			if ( log_cmd_fb ) trace ( "\n\t\t\t\tcc_bump MAGIC ON(%u)\n", ccnum );
+			MakeString ( To_From_Modules_PRIORITY, "SUQ 1\rCSG %u 65535\r", ccnum );
+			break;
+		}
+		case (BUMP_CC_OFF): {
+			/* Magic value to bump to 0; send as PRIORITY (e.g. for emergency mutes) */
+			if ( log_cmd_fb ) trace ( "\n\t\t\t\tcc_bump MAGIC OFF(%u)\n", ccnum );
+			MakeString ( To_From_Modules, "SUQ 1\rCSG %u 0\r", ccnum );
+			break;
+		}
+		case (BUMP_CC_OFF_PRIORITY): {
+			/* Magic value to bump to 0; send as PRIORITY (e.g. for emergency mutes) */
+			if ( log_cmd_fb ) trace ( "\n\t\t\t\tcc_bump MAGIC OFF(%u)\n", ccnum );
+			MakeString ( To_From_Modules_PRIORITY, "SUQ 1\rCSG %u 0\r", ccnum );
+			break;
+		}
+		case (BUMP_CC_GSB2): {
+			/* Magic value to request GSB2; requires module unitnum, which we do have; send as PRIORITY (e.g. for mute status) */
+			if ( log_cmd_fb ) trace ( "\n\t\t\t\tcc_bump MAGIC GSB2(%u)\n", ccnum );
+			if ( unitnums[ccnum] = 0 ) {
+				/* Error: unitnum not set for this cc # */
+				print ( "\nError: SymNet-rigmap.usp: CHANGE cc_bump(BUMP_CC_GSB2): unitnum[] not configured for (magic) CC bump for ccnum=%u.\n", ccnum );
+				TerminateEvent;
+			}
+			MakeString ( To_From_Modules_PRIORITY, "SUQ %u\rGSB2 %u 1\r", unitnums[ccnum], ccnum );
+			break;
+		}
+		case (BUMP_CC_METERSTOP): {
+			/* Stop Meters: send as PRIORITY */
+			if ( log_cmd_fb ) trace ( "\n\t\t\t\tcc_bump MAGIC METERSTOP(%u)\n", ccnum );
+			MakeString ( To_From_Modules_PRIORITY, "SUQ 1\rPUD %u\r", ccnum );
+			break;
+		}
+		case (BUMP_CC_METERSTART): {
+			if ( log_cmd_fb ) trace ( "\n\t\t\t\tcc_bump MAGIC METERSTART(%u)\n", ccnum );
+			MakeString ( To_From_Modules, "SUQ 1\rPUE %u\r", ccnum );
+			break;
+		}
+		case (BUMP_CC_METERSNAPSHOT): {
+			/* (This would be better with a single GSB2, but we don't currently have unitnums rigmapped for meters)
+			 * so we'll just fake it with a quick on-off */
+			if ( log_cmd_fb ) trace ( "\n\t\t\t\tcc_bump MAGIC METERSNAPSHOT(%u)  (unitnum(not used)=%u)\n", ccnum, unitnums[ccnum] );
+			MakeString ( To_From_Modules, "SUQ 1\rPUE %u\rPUD %u\n", ccnum, ccnum );
+			break;
+		}
+		case (BUMP_CC_METERZERO): {
+			if ( log_cmd_fb ) trace ( "\n\t\t\t\tcc_bump MAGIC METERZERO(%u)\n", ccnum );
+			cc_val[ccnum] = 0;  //??? need also a delay to catch lingering pushed meter ccvals?  or leave that to the caller?
+			break;
+		}
+		default: {
+	
+			/* Unit-directed (CC) bumps: error if no unitnum */
+			if ( unitnums[ccnum] = 0 ) {
+				/* Error: unitnum not set for this cc # */
+				print ( "\nError: SymNet-rigmap.usp: CHANGE cc_bump: unitnum[%u] not configured (zero), but relative CC bump requested.\n", ccnum );
+				TerminateEvent;
+		
+			/* OK to bump up/down to unitnum */
+			} else if ( bumpVal > 0 ) {
+				/* Bump up */
+				if ( log_cmd_fb ) trace ( "\n\t\t\t\tcc_bump regular UP(%u)=[%d/%u] [%d/%u]\n", ccnum, bumpval, bumpval, cc_bump[ccnum], cc_bump[ccnum] );
+				MakeString ( To_From_Modules, "SUQ %u\rCC %u 1 %u\r", unitnums[ccnum], ccnum, bumpval );
+			} else {
+				/* Bump down */
+				if ( log_cmd_fb ) trace ( "\n\t\t\t\tcc_bump regular DOWN(%u)=[%d/%u] [%d/%u]\n", ccnum, bumpval, bumpval, cc_bump[ccnum], cc_bump[ccnum] );
+				MakeString ( To_From_Modules_PRIORITY, "SUQ %u\rCC %u 0 %u\r", unitnums[ccnum], ccnum, abs(bumpval) );
+			}
+		}
+	}
+}
+
+//
+//Handler just to fire up the tx_busy indicator, since
+//sometimes the queue_daemon doesn't move fast enough to
+//do the same.  queue_daemon() actually does all the
+//handling of the incoming serial data, not this handler
+//
+CHANGE From_Modules {
+	tx_busy = 1;  //update LED
+	Tx_Buffer_Meter = Len(From_Modules) * Len_Tx_Scale; //update meter
+	if ( Len(From_Modules) > INPUT_BUFFER_MAX ) Tx_Buffer_Meter = 65535; //limit after overflowing for visual
+}
+
+//Reload Rigmap
+//
+PUSH Reload_Rigmap {
+	integer save_crawl_run; 
+	if ( rigmap_loading ) {		//FIXME: this should be in the start of the event handler to avoid concurrency on the zero_ function before this check
+		print ( "\nError: rigmap.usp:Reload_Rigmap pressed again before current one finished; aborting 2nd request\n" );
+		return;
+	}
+	error = 0;
+	rigmap_loading = 1;
+	trace ( "\nSymNet-rigmap.usp: reloading rigmap...\n" );
+
+	/* Pause crawl? */
+	save_crawl_run = 0;
+	if ( crawl_run ) {
+		save_crawl_run = 1;
+		trace ( "\npausing crawl...\n" );
+		crawl_text = "Pausing crawl..."; 
+		crawl_run = 0;
+	}
+
+	/* Reset config and reload */
+	zero_config_data();
+	load_rigmap();
+	stop_all_meters();
+	rigmap_loading = 0;
+	crawl_ubnum = 0;
+	crawl_round_count = 0;
+
+	crawl_text = "Rebuilding update blocks...";
+	rebuild_update_blocks();
+
+	/* Run new crawl_daemon in the background */
+	wait (0) {
+		integer new_crawl_daemon_pid;
+		/* Set up new pid */
+		/* FIXME: this should be atomic */
+		crawl_daemon_pid = crawl_daemon_pid + 1;  //crawl_daemon_pid is global...
+		new_crawl_daemon_pid = crawl_daemon_pid;  //grab it and use it
+		crawl_daemon ( new_crawl_daemon_pid );  //run in background
+	}
+
+	/* Resume crawl? */
+	if ( save_crawl_run ) {
+		crawl_text = "Resuming crawl..."; 
+		trace ( "\nresuming crawl.\n" );
+		crawl_run = 1;
+	} else {
+		crawl_text = "...";
+	}
+
+}
+
+PUSH start_symnet_daemon {
+	integer newpid;
+	symnet_daemon_pid = symnet_daemon_pid + 1;
+	newpid = symnet_daemon_pid;
+	symnet_daemon( newpid );
+}
+PUSH start_queue_daemon {
+	integer newpid;
+	queue_daemon_pid = queue_daemon_pid + 1;
+	newpid = queue_daemon_pid;
+	queue_daemon( newpid );
+}
+PUSH turbo_crawl_pr {
+	integer newpid, i, crawl_was_running;
+	if ( turbo_crawl_fb ) {
+		/* Just unset the flag/fb; and leave the current crawl_daemon running */
+		/* (it will automatically adjust to non-turbo mode) */
+		turbo_crawl_fb = 0;
+	} else {
+		crawl_was_running = crawl_run;  //save for restore below
+		/* Run a few turbo rounds; break out if another process canceled */
+		for ( i = 1 to TURBO_NUM_ROUNDS ) {
+trace ( "SNR: turbo_crawl_pr loop: i=%u\n", i );
+			MakeString ( stdout, "Crawl turbo #%u of %u starting.", i, TURBO_NUM_ROUNDS );
+
+			/* Set up new pid */
+			/* FIXME: this should be atomic */
+			crawl_daemon_pid = crawl_daemon_pid + 1;
+			newpid = crawl_daemon_pid;
+
+			/* (Re-)Run the crawl daemon, in turbo mode */
+			turbo_crawl_fb = 1;
+			crawl_run = 1;  //start/resume if not already running
+			crawl_daemon ( newpid );
+
+			/* User canceled? */
+			if ( turbo_crawl_fb = 0 ) break;
+trace ( "SNR: turbo_crawl_pr end of loop: i=%u\n", i );
+		}
+
+		/* Done with turbo rounds; clear flag till next call */
+trace ( "SNR: turbo_crawl_pr turning off turbo_crawl_fb...\n" );
+		turbo_crawl_fb = 0;
+trace ( "SNR: turbo_crawl_pr  . . . result=%u\n\n", turbo_crawl_fb );
+trace ( "SNR: turbo_crawl_pr  restoring crawl_run to %u\n", crawl_was_running );
+		MakeString ( stdout, "Crawl turbo (%u) rounds complete.", TURBO_NUM_ROUNDS );
+
+		/* Restore previous (regular mode) crawl state */
+		crawl_run = crawl_was_running;
+
+	}
+}
+PUSH crawl_toggle_pr {
+	recall_save_crawl_run = 0;
+	if ( crawl_run ) {
+		/* Pause crawl (at current block #) */
+		crawl_run = 0;
+		NVRAM_save_crawl_run = 0;
+		//MakeString ( crawl_text, "%u:%u:%u.", crawl_round_count, unitnums[crawl_num], crawl_num );  //rudimentary status indicator
+
+	} else {
+		/* Start/resume crawling */
+		crawl_run = 1;
+		NVRAM_save_crawl_run = 1;
+		//pulse ( STANDARD_PULSE_TIME, crawl_rehold );
+		crawl_held = 0;
+		//MakeString ( crawl_text, "%u:%u:%u", crawl_round_count, unitnums[crawl_num], crawl_num );  //rudimentary status indicator
+		//pulse ( STANDARD_PULSE_TIME, crawl_proceed );
+	}
+}
+
+PUSH log_cmd_pr {
+	log_cmd_fb = (log_cmd_fb=0); //toggle 0 or 1
+}
+PUSH log_ccval_pr {
+	log_ccval_fb = (log_ccval_fb=0); //toggle 0 or 1
+}
+
+PUSH dump_ccvals_file_pr {
+	if ( dump_ccvals_file_fb ) return;  //already running or hung
+	dump_ccvals_file_fb = 1;
+	writefile_ccvals();
+	dump_ccvals_file_fb = 0;
+}
+PUSH dump_ccvals_string_pr {
+	output_ccvals();
+}
+PUSH zero_nvram_ccvals_pr {
+	integer i;
+	print ( "\nZeroing nvram ccvals... (SNR:zero_nvram_ccvals)\n" );
+	for ( i = 1 to MAX_CC )
+		NV_cc_val[i] = 0;
+	print ( "\n...zeroing nvram ccvals done. (SNR:zero_nvram_ccvals)\n" );
+}
+
+CHANGE dbg_cmd {
+	integer i;
+	string cmd[100];
+	cmd = Upper ( dbg_cmd );
+	print ( "\ndbg_cmd(%s)\n\t", cmd );
+
+	if ( cmd = "ACKOFF"  || dbg_cmd = "ackoff") {
+		DBG_ACKOFF = 1;
+		print ( "Wait_For_Ack() is now OFF\n" );
+
+	} else if ( cmd = "ACKON" ) {
+		DBG_ACKOFF = 0;
+		print ( "Wait_For_Ack() is now ON\n" );
+
+	} else if ( cmd = "ACK" ) {
+		print ( "ACKOFF = %u\n", DBG_ACKOFF );
+
+	} else if ( Upper(Left(cmd,4)) = "PACE" ) {
+		i = AToI ( cmd );
+		if ( cmd = "PACE" ) {
+			/* Info Only */
+			print ( "SYMNET_MINIMUM_PACE is currently (%u); (default=%u)\n", SYMNET_MINIMUM_PACE, 5 );
+		} else {
+			/* Set to i */
+			SYMNET_MINIMUM_PACE = i;
+			print ( "Setting SYMNET_MINIMUM_PACE to (%u); (default=%u)\n", i, 5 );
+		}
+
+	} else if ( Left(cmd,4) = "TO" ) {
+		i = AToI ( cmd );
+		if ( cmd = "TO" ) {
+			/* Info Only */
+			print ( "WAIT_FOR_ACK_TIMEOUT is currently (%u); (default=%u)\n", WAIT_FOR_ACK_TIMEOUT, 200 );
+		} else {
+			/* Set to i */
+			WAIT_FOR_ACK_TIMEOUT = i;
+			print ( "Setting WAIT_FOR_ACK_TIMEOUT to (%u); (default=%u)\n", i, 200 );
+		}
+
+	} else if ( Left(cmd,4) = "ID" ) {
+		i = AToI ( cmd );
+		if ( cmd = "ID" ) {
+			/* Info Only */
+			print ( "WAIT_FOR_ACK_INNER_DELAY is currently (%u); (default=%u)\n", WAIT_FOR_ACK_INNER_DELAY, 20 );
+		} else {
+			/* Set to i */
+			WAIT_FOR_ACK_INNER_DELAY = i;
+			print ( "Setting WAIT_FOR_ACK_INNER_DELAY to (%u); (default=%u)\n", i, 20 );
+		}
+
+	} else if ( Left(cmd,4) = "PR" ) {
+		i = AToI ( cmd );
+		if ( cmd = "PR" ) {
+			/* Info Only */
+			print ( "PRIORITY_RECHECK_TIMEOUT is currently (%u); (default=%u)\n", PRIORITY_RECHECK_TIMEOUT, 50 );
+		} else {
+			/* Set to i */
+			PRIORITY_RECHECK_TIMEOUT = i;
+			print ( "Setting PRIORITY_RECHECK_TIMEOUT to (%u); (default=%u)\n", i, 50 );
+		}
+
+	} else {
+		print ( "???: ACKOFF | ACK | TOn | IDn | PRn\n" );
+	}
+}
+
+Function main() {
+SYMNET_MINIMUM_PACE = 5;
+WAIT_FOR_ACK_INNER_DELAY = 20;
+PRIORITY_RECHECK_TIMEOUT = 50;
+trace ( "\n\n\n\nSymNet-rigmap.USP main() started.\n\n\n\n" );
+	//trace ("Starting SymNetSerial (1716) Main()\n");
+	print ( "\n\n\nSymNetSerial.usp: From_SymNet len1=%u\n", len(From_SymNet) );
+	clearbuffer(From_SymNet);
+	print ( "SymNetSerial.usp: From_SymNet len2=%u\n", len(From_SymNet) );
+//temp 130123:
+log_cmd_fb = 1;
+
+	
+	/* Initializations/Defaults */
+	if ( NVRAM_save_crawl_run ) recall_save_crawl_run = 1;
+	else recall_save_crawl_run = 0;
+	Wait_For_Ack_Timeout = WAIT_FOR_ACK_TIMEOUT_DEFAULT;
+	//Len_Tx_Scale = 65536 / INPUT_BUFFER_MAX;
+	Len_Tx_Scale = 65536 / TX_BUFFER_METER_SCALE; //may likely overflow and wrap, even multiple times
+	Len_Rx_Scale = 65536 / RX_BUFFER_METER_SCALE; //may likely overflow and wrap, even multiple times
+	curr_unit = 0;
+	recall_mode_all_fb = 0;  //default: recall changed controllers only
+	recalling = 0;
+	recall_pid = 0;
+	crawl_daemon_pid = 0;
+	popup_mode = POPUP_MODE_OFF;
+
+	/* Reset flags */
+	ACK = 0;
+	resynced = 0;
+	error = 0;
+
+	/* Recall all these before we might spin so many child handlers (FIXME: don't they spin anyway, even if before WaitForInitiazizationComplete?) */
+	recall_nvram_data();
+
+	/* Kill all meters and flush the buffer, which are often always pushing upon startup */
+	stop_all_meters();
+	From_SymNet = "";
+
+    	WaitForInitializationComplete();
+
+	/* Reload Rigmap */
+	rigmap_loading = 1;
+	zero_config_data();
+	load_rigmap();
+	rigmap_loading = 0;
+
+
+	/* Start daemons */
+	//120414: now using PUSH handler (Ian suggested this, rather than running anything important in a wait() handler)
+	//wait(0) symnet_daemon();
+	//wait(0) queue_daemon();
+	wait(100) { Pulse(500,startup_start_daemons); };  //utility route through SMW to trigger daemon startups
+
+	/* Sync with SymNet */
+	//FIXME: this should be a DELAY(), not a WAIT(), according to Ian...
+	wait ( STARTUP_WAIT_RESYNC_DELAY ) {  //for some reason we have to wait before requesting resync (why!?!?)
+						//well for one reason the data will overflow all the From_SymNet buffers if
+						//the respective listen_symnet_local() daemons are not yet running.
+						//but there may be another more critical reason...???
+		//print ( "STARTUP_WAIT_RESYNC_DELAY expired; running resync.\n" );
+		print ( "SKIPPING SymNet resync\n" );
+		//repush_from_SymNet();
+		//delay ( SIMULATED_RESYNC_DURATION );
+		resynced = 1;
+
+		/* If not already running (started by user), start the crawl daemon, which does the same, but slower and more complete */
+		if ( crawl_daemon_pid = 0 ) {
+
+			/* Recall crawl run state from NVRAM, only if user hasn't already started diddling with the crawl him/herself */
+			if ( recall_save_crawl_run ) {
+				crawl_run = NVRAM_save_crawl_run;
+				trace ( "\n\n\t >>>>>>> recalling crawl_run to %u\n", NVRAM_save_crawl_run );
+				recall_save_crawl_run = 0;  //done recalling
+			}
+			else trace ( "\n\n\t >>>>>>> NOT recalling crawl_run (recall_save_crawl_run=%u, NVRAM_save_crawl_run=%u)\n\n", recall_save_crawl_run, NVRAM_save_crawl_run );
+
+			/* Start and run the crawl daemon in this process */
+			crawl_daemon_pid = 1;
+			trace ( "\nstarting crawl_daemon (from main() )\n" );
+			crawl_daemon ( 1 );
+		} else {
+			print ( "\nSNR main(): crawl daemon already running; not restarting.\n" );
+		}
+
+	}
+
+trace ( "\n\n\n\nSymNet-rigmap.USP main() done mostly; starting watchdog.\n\n\n\n" );
+	/* Watchdog loop */
+	while ( 1 ) {
+		delay ( WATCHDOG_INTERVAL );
+		watchdog_check();
+	}
+
+}
+
