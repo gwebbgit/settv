@@ -2519,8 +2519,8 @@ Ym=-1
 SH=26
 Z=100
 P=1272
-Ht=4
-Hi=277
+Ht=1
+Hi=265
 ]
 [
 ObjTp=Bw
@@ -3181,6 +3181,7 @@ I261=514
 I262=502
 I263=503
 I264=517
+I265=521
 mO=512
 tO=512
 O1=501
@@ -9757,4 +9758,9 @@ Nm=mlx3_page_active_6=
 ObjTp=Sg
 H=520
 Nm=mlx3_page_active_7=
+]
+[
+ObjTp=Sg
+H=521
+Nm=mlx3_mode_X_page7=
 ]

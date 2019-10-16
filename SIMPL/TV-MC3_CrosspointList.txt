@@ -1,0 +1,13 @@
+Crosspoint listing for C:\Users\w\Documents\GitHub\settv\SIMPL\TV-MC3.SMW
+
+Note:  Crosspoint symbols with EquipID or ControlID set to 0d are not routeable.
+
+Equipment Crosspoint Routing.                                                                       EquipID
+===========================================================================================================
+S-2                                                                                                 1
+S-3                                                                                                 2
+
+Control Crosspoint Routing.                                                                         ControlID
+=============================================================================================================
+S-1                                                                                                 1
+
