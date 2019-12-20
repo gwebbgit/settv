@@ -1,0 +1,6 @@
+DIGITAL_INPUT in[3];
+CHANGE in {
+	integer i;
+	i = GetLastModifiedArrayIndex();
+	GenerateUserNotice ( "%s: #%u=%u\n", GetSymbolInstanceName(), i, in[i] );
+}
