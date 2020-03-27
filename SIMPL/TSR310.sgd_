@@ -4,7 +4,7 @@ Sgntr=SGD
 RelVrs=3
 VTProeVer=6.2.00
 Schema=1
-CRCGUID=32A7005A-69A8-45D7-9106-09DE1939A0C9
+CRCGUID=283E6941-95B1-4450-80E6-67FB317764F5
 ]
 ;================================================================================
 [
@@ -313,6 +313,419 @@ Sgn=0
 ObjTp=CED
 H=1
 Name=TSR310_popup 61 input select_INPUT SRC SELECT Spectrum_Roku.ced
+;Cedver is the version of the Smart Graphics control, not the CED file format.
+;If the control definition changes, increment this.
+CedVer=1
+]
+;================================================================================
+[
+ObjTp=Symbol
+Name=TSR310_sp 41 TV Presets v2_TV PRESETS v2.ced
+Hint=TV PRESETS v2 (Smart Object ID=2)
+Code=2
+SGControlType=TV Presets Application v2
+SGControlName=TV PRESETS v2
+GUID=6EA0366F-E685-4314-B555-B54BD5FF8F53
+SmplCName=TSR310_sp 41 TV Presets v2_TV PRESETS v2.ced
+SMWRev=4.02.19
+Expand=expand_random
+HelpID=10151
+;Define the number of inputs, outputs and parameters
+MinVariableInputs=0
+MaxVariableInputs=0
+MinVariableOutputs=0
+MaxVariableOutputs=0
+NumFixedParams=1
+MinVariableInputsList2=1
+MaxVariableInputsList2=1
+MinVariableOutputsList2=1
+MaxVariableOutputsList2=1
+MinVariableInputsList3=3
+MaxVariableInputsList3=3
+MinVariableOutputsList3=3
+MaxVariableOutputsList3=3
+;Define the cues, and signal types  each input, output and parameter.
+InputList2Cue1=ProviderSelected
+InputList2SigType1=Analog
+OutputList2Cue1=[~UNUSED3~]
+OutputList2SigType1=Analog
+InputList3Cue1=CRPC_FB
+InputList3SigType1=Serial
+OutputList3Cue1=CRPC
+OutputList3SigType1=Serial
+InputList3Cue2=Message_FB
+InputList3SigType2=Serial
+OutputList3Cue2=Message
+OutputList3SigType2=Serial
+InputList3Cue3=[~UNUSED3~]
+InputList3SigType3=Serial
+OutputList3Cue3=SelectChannel
+OutputList3SigType3=Serial
+ParamCue1=SmartObjectId
+ParamSigType1=Constant
+MPp=1
+Pp1=2
+CedH=2
+SmartObjId=2d
+]
+; Parameter Properties for Smart Object ID
+[
+ObjTp=Dp
+H=2
+Tp=1
+HD=TRUE
+DV=2d
+NF=1
+DNF=1
+EncFmt=0
+DVLF=1
+Sgn=0
+]
+; Smart Objects Definition section
+[
+ObjTp=CED
+H=2
+Name=TSR310_sp 41 TV Presets v2_TV PRESETS v2.ced
+;Cedver is the version of the Smart Graphics control, not the CED file format.
+;If the control definition changes, increment this.
+CedVer=1
+CedMod=TV Presets CRPC Interface v2.0.cmc
+]
+;================================================================================
+[
+ObjTp=Symbol
+Name=TSR310_main navbar_MAIN NAVBAR.ced
+Hint=MAIN NAVBAR (Smart Object ID=3)
+Code=3
+SGControlType=Icon List Horizontal
+SGControlName=MAIN NAVBAR
+GUID=1E3096BE-D757-4313-85CD-4FDFC1B03305
+SmplCName=TSR310_main navbar_MAIN NAVBAR.ced
+SMWRev=4.02.19
+Expand=expand_random
+HelpID=10032
+;Define the number of inputs, outputs and parameters
+MinVariableInputs=4
+MaxVariableInputs=4
+MinVariableOutputs=4
+MaxVariableOutputs=4
+NumFixedParams=1
+MinVariableInputsList2=6
+MaxVariableInputsList2=6
+MinVariableOutputsList2=6
+MaxVariableOutputsList2=6
+MinVariableInputsList3=0
+MaxVariableInputsList3=0
+MinVariableOutputsList3=0
+MaxVariableOutputsList3=0
+;Define the cues, and signal types  each input, output and parameter.
+InputCue1=[~UNUSED3~]
+InputSigType1=Digital
+OutputCue1=Item 1 Pressed
+OutputSigType1=Digital
+InputCue2=[~UNUSED3~]
+InputSigType2=Digital
+OutputCue2=Item 2 Pressed
+OutputSigType2=Digital
+InputCue3=[~UNUSED3~]
+InputSigType3=Digital
+OutputCue3=Item 3 Pressed
+OutputSigType3=Digital
+InputCue4=[~UNUSED3~]
+InputSigType4=Digital
+OutputCue4=Item 4 Pressed
+OutputSigType4=Digital
+InputList2Cue1=Select Item
+InputList2SigType1=Analog
+OutputList2Cue1=[~UNUSED3~]
+OutputList2SigType1=Analog
+InputList2Cue2=Deselect Item
+InputList2SigType2=Analog
+OutputList2Cue2=[~UNUSED3~]
+OutputList2SigType2=Analog
+InputList2Cue3=Scroll Item
+InputList2SigType3=Analog
+OutputList2Cue3=[~UNUSED3~]
+OutputList2SigType3=Analog
+InputList2Cue4=[~UNUSED3~]
+InputList2SigType4=Analog
+OutputList2Cue4=Item Clicked
+OutputList2SigType4=Analog
+InputList2Cue5=[~UNUSED3~]
+InputList2SigType5=Analog
+OutputList2Cue5=Item Held
+OutputList2SigType5=Analog
+InputList2Cue6=Set Num of Items
+InputList2SigType6=Analog
+OutputList2Cue6=[~UNUSED3~]
+OutputList2SigType6=Analog
+ParamCue1=SmartObjectId
+ParamSigType1=Constant
+MPp=1
+Pp1=3
+CedH=3
+SmartObjId=3d
+]
+; Parameter Properties for Smart Object ID
+[
+ObjTp=Dp
+H=3
+Tp=1
+HD=TRUE
+DV=3d
+NF=1
+DNF=1
+EncFmt=0
+DVLF=1
+Sgn=0
+]
+; Smart Objects Definition section
+[
+ObjTp=CED
+H=3
+Name=TSR310_main navbar_MAIN NAVBAR.ced
+;Cedver is the version of the Smart Graphics control, not the CED file format.
+;If the control definition changes, increment this.
+CedVer=1
+]
+;================================================================================
+[
+ObjTp=Symbol
+Name=TSR310_sp 42 TV Settings_TV SETTINGS BUTTONS 1.ced
+Hint=TV SETTINGS BUTTONS 1 (Smart Object ID=4)
+Code=4
+SGControlType=Button List Vertical
+SGControlName=TV SETTINGS BUTTONS 1
+GUID=074448BB-8F87-4794-A597-8F9932FB112C
+SmplCName=TSR310_sp 42 TV Settings_TV SETTINGS BUTTONS 1.ced
+SMWRev=4.02.19
+Expand=expand_random
+HelpID=10009
+;Define the number of inputs, outputs and parameters
+MinVariableInputs=3
+MaxVariableInputs=3
+MinVariableOutputs=3
+MaxVariableOutputs=3
+NumFixedParams=1
+MinVariableInputsList2=6
+MaxVariableInputsList2=6
+MinVariableOutputsList2=6
+MaxVariableOutputsList2=6
+MinVariableInputsList3=3
+MaxVariableInputsList3=3
+MinVariableOutputsList3=3
+MaxVariableOutputsList3=3
+;Define the cues, and signal types  each input, output and parameter.
+InputCue1=[~UNUSED3~]
+InputSigType1=Digital
+OutputCue1=Item 1 Pressed
+OutputSigType1=Digital
+InputCue2=[~UNUSED3~]
+InputSigType2=Digital
+OutputCue2=Item 2 Pressed
+OutputSigType2=Digital
+InputCue3=[~UNUSED3~]
+InputSigType3=Digital
+OutputCue3=Item 3 Pressed
+OutputSigType3=Digital
+InputList2Cue1=Select Item
+InputList2SigType1=Analog
+OutputList2Cue1=[~UNUSED3~]
+OutputList2SigType1=Analog
+InputList2Cue2=Deselect Item
+InputList2SigType2=Analog
+OutputList2Cue2=[~UNUSED3~]
+OutputList2SigType2=Analog
+InputList2Cue3=Scroll Item
+InputList2SigType3=Analog
+OutputList2Cue3=[~UNUSED3~]
+OutputList2SigType3=Analog
+InputList2Cue4=[~UNUSED3~]
+InputList2SigType4=Analog
+OutputList2Cue4=Item Clicked
+OutputList2SigType4=Analog
+InputList2Cue5=[~UNUSED3~]
+InputList2SigType5=Analog
+OutputList2Cue5=Item Held
+OutputList2SigType5=Analog
+InputList2Cue6=Set Num of Items
+InputList2SigType6=Analog
+OutputList2Cue6=[~UNUSED3~]
+OutputList2SigType6=Analog
+InputList3Cue1=Item 1 Text
+InputList3SigType1=Serial
+OutputList3Cue1=[~UNUSED3~]
+OutputList3SigType1=Serial
+InputList3Cue2=Item 2 Text
+InputList3SigType2=Serial
+OutputList3Cue2=[~UNUSED3~]
+OutputList3SigType2=Serial
+InputList3Cue3=Item 3 Text
+InputList3SigType3=Serial
+OutputList3Cue3=[~UNUSED3~]
+OutputList3SigType3=Serial
+ParamCue1=SmartObjectId
+ParamSigType1=Constant
+MPp=1
+Pp1=4
+CedH=4
+SmartObjId=4d
+]
+; Parameter Properties for Smart Object ID
+[
+ObjTp=Dp
+H=4
+Tp=1
+HD=TRUE
+DV=4d
+NF=1
+DNF=1
+EncFmt=0
+DVLF=1
+Sgn=0
+]
+; Smart Objects Definition section
+[
+ObjTp=CED
+H=4
+Name=TSR310_sp 42 TV Settings_TV SETTINGS BUTTONS 1.ced
+;Cedver is the version of the Smart Graphics control, not the CED file format.
+;If the control definition changes, increment this.
+CedVer=1
+]
+;================================================================================
+[
+ObjTp=Symbol
+Name=TSR310_sp 43 LIGHTS_LIGHTS BUTTONS.ced
+Hint=LIGHTS BUTTONS (Smart Object ID=5)
+Code=5
+SGControlType=Button List Vertical
+SGControlName=LIGHTS BUTTONS
+GUID=E9DCCA40-9833-4914-87FE-9E4C3BEE21D9
+SmplCName=TSR310_sp 43 LIGHTS_LIGHTS BUTTONS.ced
+SMWRev=4.02.19
+Expand=expand_random
+HelpID=10009
+;Define the number of inputs, outputs and parameters
+MinVariableInputs=7
+MaxVariableInputs=7
+MinVariableOutputs=7
+MaxVariableOutputs=7
+NumFixedParams=1
+MinVariableInputsList2=6
+MaxVariableInputsList2=6
+MinVariableOutputsList2=6
+MaxVariableOutputsList2=6
+MinVariableInputsList3=7
+MaxVariableInputsList3=7
+MinVariableOutputsList3=7
+MaxVariableOutputsList3=7
+;Define the cues, and signal types  each input, output and parameter.
+InputCue1=[~UNUSED3~]
+InputSigType1=Digital
+OutputCue1=Item 1 Pressed
+OutputSigType1=Digital
+InputCue2=[~UNUSED3~]
+InputSigType2=Digital
+OutputCue2=Item 2 Pressed
+OutputSigType2=Digital
+InputCue3=[~UNUSED3~]
+InputSigType3=Digital
+OutputCue3=Item 3 Pressed
+OutputSigType3=Digital
+InputCue4=[~UNUSED3~]
+InputSigType4=Digital
+OutputCue4=Item 4 Pressed
+OutputSigType4=Digital
+InputCue5=[~UNUSED3~]
+InputSigType5=Digital
+OutputCue5=Item 5 Pressed
+OutputSigType5=Digital
+InputCue6=[~UNUSED3~]
+InputSigType6=Digital
+OutputCue6=Item 6 Pressed
+OutputSigType6=Digital
+InputCue7=[~UNUSED3~]
+InputSigType7=Digital
+OutputCue7=Item 7 Pressed
+OutputSigType7=Digital
+InputList2Cue1=Select Item
+InputList2SigType1=Analog
+OutputList2Cue1=[~UNUSED3~]
+OutputList2SigType1=Analog
+InputList2Cue2=Deselect Item
+InputList2SigType2=Analog
+OutputList2Cue2=[~UNUSED3~]
+OutputList2SigType2=Analog
+InputList2Cue3=Scroll Item
+InputList2SigType3=Analog
+OutputList2Cue3=[~UNUSED3~]
+OutputList2SigType3=Analog
+InputList2Cue4=[~UNUSED3~]
+InputList2SigType4=Analog
+OutputList2Cue4=Item Clicked
+OutputList2SigType4=Analog
+InputList2Cue5=[~UNUSED3~]
+InputList2SigType5=Analog
+OutputList2Cue5=Item Held
+OutputList2SigType5=Analog
+InputList2Cue6=Set Num of Items
+InputList2SigType6=Analog
+OutputList2Cue6=[~UNUSED3~]
+OutputList2SigType6=Analog
+InputList3Cue1=Item 1 Text
+InputList3SigType1=Serial
+OutputList3Cue1=[~UNUSED3~]
+OutputList3SigType1=Serial
+InputList3Cue2=Item 2 Text
+InputList3SigType2=Serial
+OutputList3Cue2=[~UNUSED3~]
+OutputList3SigType2=Serial
+InputList3Cue3=Item 3 Text
+InputList3SigType3=Serial
+OutputList3Cue3=[~UNUSED3~]
+OutputList3SigType3=Serial
+InputList3Cue4=Item 4 Text
+InputList3SigType4=Serial
+OutputList3Cue4=[~UNUSED3~]
+OutputList3SigType4=Serial
+InputList3Cue5=Item 5 Text
+InputList3SigType5=Serial
+OutputList3Cue5=[~UNUSED3~]
+OutputList3SigType5=Serial
+InputList3Cue6=Item 6 Text
+InputList3SigType6=Serial
+OutputList3Cue6=[~UNUSED3~]
+OutputList3SigType6=Serial
+InputList3Cue7=Item 7 Text
+InputList3SigType7=Serial
+OutputList3Cue7=[~UNUSED3~]
+OutputList3SigType7=Serial
+ParamCue1=SmartObjectId
+ParamSigType1=Constant
+MPp=1
+Pp1=5
+CedH=5
+SmartObjId=5d
+]
+; Parameter Properties for Smart Object ID
+[
+ObjTp=Dp
+H=5
+Tp=1
+HD=TRUE
+DV=5d
+NF=1
+DNF=1
+EncFmt=0
+DVLF=1
+Sgn=0
+]
+; Smart Objects Definition section
+[
+ObjTp=CED
+H=5
+Name=TSR310_sp 43 LIGHTS_LIGHTS BUTTONS.ced
 ;Cedver is the version of the Smart Graphics control, not the CED file format.
 ;If the control definition changes, increment this.
 CedVer=1

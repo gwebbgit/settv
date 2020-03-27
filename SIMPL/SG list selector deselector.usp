@@ -1,0 +1,92 @@
+/*******************************************************************************************
+  SIMPL+ Module Information
+  (Fill in comments below)
+*******************************************************************************************/
+/*
+Dealer Name:
+System Name:
+System Number:
+Programmer:
+Comments:
+*/
+
+/*******************************************************************************************
+  Compiler Directives
+  (Uncomment and declare compiler directives as needed)
+*******************************************************************************************/
+// #ENABLE_DYNAMIC
+// #SYMBOL_NAME ""
+// #HINT ""
+// #DEFINE_CONSTANT
+// #CATEGORY "" 
+// #PRINT_TO_TRACE
+// #DIGITAL_EXPAND 
+// #ANALOG_SERIAL_EXPAND 
+// #OUTPUT_SHIFT 
+// #HELP_PDF_FILE ""
+#DEFAULT_VOLATILE
+#ENABLE_STACK_CHECKING
+#ENABLE_TRACE
+// #ENCODING_ASCII
+// #ENCODING_UTF16
+// #ENCODING_INHERIT_FROM_PARENT
+// #ENCODING_INHERIT_FROM_PROGRAM
+/*
+#HELP_BEGIN
+   (add additional lines of help lines)
+#HELP_END
+*/
+
+
+#DEFINE_CONSTANT NUM_SEL 4
+
+DIGITAL_INPUT
+	next_pr,
+	prev_pr,
+	sel_pr[NUM_SEL,NUM_SEL]
+	;
+DIGITAL_OUTPUT
+	sel_F[NUM_SEL,NUM_SEL]
+	;
+ANALOG_OUTPUT
+	selected_item,
+	deselected_item
+	;
+
+function update_F() {
+	integer i;
+	for ( i = 1 to NUM_SEL ) {
+		sel_F[i] = ( i = selected_item );
+	}
+}
+
+PUSH next_pr {
+	deselected_item = selected_item;
+	if ( selected_item < NUM_SEL ) {
+		selected_item = selected_item + 1;  //increment
+	} else {
+		selected_item = 1;  //wrap to 1
+	}
+	update_F();
+}
+PUSH prev_pr {
+	deselected_item = selected_item;
+	if ( selected_item > 1 ) {
+		selected_item = selected_item - 1;  //decrement
+	} else {
+		selected_item = NUM_SEL;  //wrap to max
+	}
+	update_F();
+}
+
+
+PUSH sel_pr {
+	integer i;
+	i = GetLastModifiedArrayIndex();
+	if ( i != selected_item ) {	// don't deselect self (e.g. repeated press)
+		deselected_item = selected_item;
+	}
+	selected_item = i;
+	update_F();
+}
+	
