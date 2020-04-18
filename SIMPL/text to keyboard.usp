@@ -1,0 +1,81 @@
+/*******************************************************************************************
+  SIMPL+ Module Information
+  (Fill in comments below)
+*******************************************************************************************/
+/*
+Dealer Name:
+System Name:  Text to Keyboard decoder for Roku
+System Number:
+Programmer:
+Comments:
+*/
+
+/*******************************************************************************************
+  Compiler Directives
+  (Uncomment and declare compiler directives as needed)
+*******************************************************************************************/
+// #ENABLE_DYNAMIC
+// #SYMBOL_NAME ""
+// #HINT ""
+// #DEFINE_CONSTANT
+// #CATEGORY "" 
+// #PRINT_TO_TRACE
+// #DIGITAL_EXPAND 
+// #ANALOG_SERIAL_EXPAND 
+// #OUTPUT_SHIFT 
+// #HELP_PDF_FILE ""
+#DEFAULT_VOLATILE
+#ENABLE_STACK_CHECKING
+#ENABLE_TRACE
+// #ENCODING_ASCII
+// #ENCODING_UTF16
+// #ENCODING_INHERIT_FROM_PARENT
+// #ENCODING_INHERIT_FROM_PROGRAM
+/*
+#HELP_BEGIN
+   (add additional lines of help lines)
+#HELP_END
+*/
+
+#DEFINE_CONSTANT MAXLEN_INPUT 100  //max length of input search string
+#DEFINE_CONSTANT MAXLEN_URL 300  //same as input, but encoded
+
+DIGITAL_INPUT
+	ui_enter_pr,
+	ui_escape_pr
+	;
+STRING_INPUT
+	input[MAXLEN_INPUT]
+	;
+
+STRING_OUTPUT
+	To_Roku_TCP$
+	;
+
+INTEGER
+	lastlen
+	;
+
+STRING_FUNCTION encode_url ( string s ) {
+	integer i;
+	string s2[MAXLEN_URL], c[1];
+	for ( i=1 to Len(s) ) {
+		c = Mid ( s, i, 1 );
+		if ( c = " " ) {
+			s2 = s2 + "%20";  //space special
+		} else if ( c = "/" ) {
+			s2 = s2 + "%2F";  //slash special
+		} else {
+			s2 = s2 + c;  //regular character
+		}
+	}
+	return ( s2 );
+}
+
+PUSH ui_enter_pr {
+	string s[MAXLEN_URL];
+	s = encode_url ( input );
+	MakeString ( To_Roku_TCP$, "POST /search/browse?keyword=%s HTTP/1.0\n\n", s );
+}
+
+

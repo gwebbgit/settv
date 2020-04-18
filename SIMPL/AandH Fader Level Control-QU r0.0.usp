@@ -1,0 +1,217 @@
+// SIMPL+ Module Information
+/*
+Dealer Name:	Front Side Solutions, Inc.
+Programmer:		cdr
+Comments:			A&H QU Series Fader Level Control
+*/
+
+// Compiler Directives
+#ENABLE_DYNAMIC
+#SYMBOL_NAME ""
+#CATEGORY "34" // Mixer
+// #PRINT_TO_TRACE
+// #DIGITAL_EXPAND 
+// #ANALOG_SERIAL_EXPAND 
+// #OUTPUT_SHIFT 
+// #HELP_PDF_FILE ""
+#DEFAULT_VOLATILE
+#ENABLE_STACK_CHECKING
+#ENABLE_TRACE
+#HELP_BEGIN
+AandH Fader Level Control-QU r0.0
+
+Controls fader levels on QU series Mixers.
+  **This is a 1-way module. All feedback provided is generated
+  logically inside the module.
+  
+  This module uses a TCP/IP client symbol on port 51325.
+  See demo program for example setup.
+
+Parameters:
+ ControlType: Select FX Send 1 to 4, FX Return 1 to 4, DCA Groups 1 to 4,
+  Inputs 1 to 32, Stereo Channels 1-3, Mute Groups 1 to 4, Group 1-2 to 7-8,
+  Mix 1 to 10, Main LR, Matrix 1-2 or 3-4.
+
+ ControlChnl: Select valid range from control type in decimal format.
+  Valid Ranges are:
+    FX Send: 1d to 4d
+    FX Return: 1d to 4d
+    DCA Groups: 1d to 4d
+		Inputs: 1d to 32d
+		Stereo Channels: 1d to 3d
+		Mute Groups: 1d to 4d
+		Group 1-2: 1d
+		Group 3-4: 2d
+		Group 5-6: 3d
+		Group 7-8: 4d
+		Mix 1 to 4: 1d to 4d
+		Mix 5-6: 5d
+		Mix 7-8: 6d
+		Mix 9-10: 7d
+		Main LR: 1d
+		Matrix 1-2: 1d
+		Matrix 3-4: 2d 
+ 
+ MidiChnl: The MidiChnl to control in decimal format. Default 1d
+
+Inputs:
+ Analog-
+  FdrLvl: Set the analog to the range of 0d~127d (00h~7Fh). 
+  
+Outputs:
+ Analog-
+  FdrLvlFb: Feedback of the level in the range of 0d~127d (00h~7Fh). 
+	This is tracked internally by the module.
+	  
+ Serial-
+  ToMixer: Connect to the TCP/IP symbol Transmit line.
+
+Reference the QU Mixer MIDI protocol for more details and valid Control
+Channels for the selected control type.
+
+Note: The QU series mixers return a near constant \xFF on the receiver line of the TCP/IP
+ connection, as well as a VERY large data dump when a scene is recalled.  This can easily
+ overwhelm the the receiver buffers on the Crestron processor is care is not taken.
+ Because of this, this module suite was built to be 1-way. It is recomended to comment out
+ the receiver line from the TCP/IP symbol so that your buffers do not generate continuous
+ errors in the control system log.
+
+For more information Reference: Qu_MIDI_Protocol_V1.9.pdf
+
+Tested with QU firmware V1.95
+
+Release: 2018-12-01 Release r0.0
+
+#HELP_END
+
+
+
+// DIGITAL, ANALOG and SERIAL INPUTS and OUTPUTS
+ANALOG_INPUT		_SKIP_,_SKIP_,_SKIP_,FdrLvl;
+ANALOG_OUTPUT		_SKIP_,_SKIP_,_SKIP_,FdrLvlFb;
+STRING_OUTPUT 	ToMixer;
+
+// Parameters
+INTEGER_PARAMETER	ControlType;
+INTEGER_PARAMETER	ControlChnl;
+INTEGER_PARAMETER	MidiChnl;
+// Parameter Properties
+#BEGIN_PARAMETER_PROPERTIES ControlType
+	propValidUnits = unitDecimal;
+  propList = 	{1d ,"FX Send 1 to 4"},
+  						{2d ,"FX Return 1 to 4"},
+  						{3d ,"DCA Groups 1 to 4"},
+  						{4d ,"Inputs 1 to 32"},
+  						{5d ,"Stereo Channels"},
+  						{6d ,"Mute Groups 1 to 4"},
+  						{7d ,"Group 1-2 to 7-8"},
+  						{8d ,"Mix 1 to 10"},
+  						{9d ,"Main LR"},
+  						{10d ,"Matrix 1-2, 3-4"};
+#END_PARAMETER_PROPERTIES
+
+#BEGIN_PARAMETER_PROPERTIES ControlChnl
+	propValidUnits = unitDecimal|unitHex;
+	propDefaultUnit = unitDecimal;
+	propBounds = 1d , 32d;
+  propDefaultValue = 1d;
+#END_PARAMETER_PROPERTIES
+
+#BEGIN_PARAMETER_PROPERTIES MidiChnl
+	propValidUnits = unitDecimal;
+	propDefaultUnit = unitDecimal;
+	propBounds = 1d , 16d;
+  propDefaultValue = 1d;
+#END_PARAMETER_PROPERTIES
+
+
+// Global Variables
+STRING cMidi[2], cCtrlChnl[2], cCmd[12];
+NONVOLATILE INTEGER	nLvl;
+
+// Functions
+Function BuildFb()
+{
+	FdrLvlFb = nLvl;
+}
+
+Function BuildLvl()
+{
+	Makestring(ToMixer, "%s%s%s\x26\x07", cCmd,CHR(nLvl),cMidi);
+	BuildFb();
+}
+
+
+
+// Event Handlers
+CHANGE FdrLvl
+{
+  nLvl = FdrLvl;
+	BuildLvl();
+}
+
+// Main()
+Function Main()
+{
+	WaitForInitializationComplete();
+
+	CSwitch (ControlType)
+	{
+		CASE (1):	//FX Send 1 to 4
+		{
+			cCtrlChnl = CHR(0x00 + ControlChnl - 1);
+			Break;
+		}
+		CASE (2): //FX Return 1 to 4
+		{
+			cCtrlChnl = CHR(0x08 + ControlChnl - 1);
+			Break;
+		}
+		CASE (3): //DCA Groups 1 to 4
+		{
+			cCtrlChnl = CHR(0x10 + ControlChnl - 1);
+			Break;
+			Break;
+		}
+		CASE (4): //Inputs 1 to 32
+		{
+			cCtrlChnl = CHR(0x20 + ControlChnl - 1);
+			Break;
+		}
+		CASE (5): //Stereo Channels
+		{
+			cCtrlChnl = CHR(0x40 + ControlChnl - 1);
+			Break;
+		}
+		CASE (6): //Mute Groups 1 to 4
+		{
+			cCtrlChnl = CHR(0x50 + ControlChnl - 1);
+			Break;
+		}
+		CASE (7): //Group 1-2 to 7-8
+		{
+			cCtrlChnl = CHR(0x68 + ControlChnl - 1);
+			Break;
+		}
+		CASE (8): //Mix 1 to 10
+		{
+			cCtrlChnl = CHR(0x60 + ControlChnl - 1);
+			Break;
+		}
+		CASE (9): //Main LR
+		{
+			cCtrlChnl = CHR(0x67 + ControlChnl - 1);
+			Break;
+		}
+		CASE (10): //Matrix 1-2, 3-4
+		{
+			cCtrlChnl = CHR(0x6C + ControlChnl - 1);
+			Break;
+		}
+	}
+	cMidi = CHR(0xB0 + MidiChnl - 1);
+
+	Makestring(cCmd, 	"%s\x63%s%s\x62\x17%s\x06",
+											cMidi,cCtrlChnl,cMidi,cMidi);// _Lvl_%s\x26\x07",
+	BuildFb();
+}	

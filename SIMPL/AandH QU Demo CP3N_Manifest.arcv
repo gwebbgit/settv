@@ -1,0 +1,57 @@
+[BEGIN]
+  ObjTp=FSgntr
+  Sgntr=ArchiveManifest
+  RelVrs=4.11.06
+  IsProgram=1
+  TopLevelProgram=AandH QU Demo CP3N.smw
+[END]
+[BEGIN]
+  ObjTp=ArchiveItem
+  File=AandH QU Demo CP3N.smw
+  Scope=1
+[END]
+[BEGIN]
+  ObjTp=ArchiveItem
+  File=AandH QU Demo CP3N.sig
+  Scope=1
+[END]
+[BEGIN]
+  ObjTp=ArchiveItem
+  File=AandH QU Demo CP3N.lpz
+  Scope=1
+[END]
+[BEGIN]
+  ObjTp=ArchiveItem
+  File=AandH LR Assign Control-QU r0.0.ush
+  Scope=1
+[END]
+[BEGIN]
+  ObjTp=ArchiveItem
+  File=AandH Mix Assign Control-QU r0.0.ush
+  Scope=1
+[END]
+[BEGIN]
+  ObjTp=ArchiveItem
+  File=AandH Mute Group Assign Control-QU r0.0.ush
+  Scope=1
+[END]
+[BEGIN]
+  ObjTp=ArchiveItem
+  File=AandH Scene Control-QU r0.0.ush
+  Scope=1
+[END]
+[BEGIN]
+  ObjTp=ArchiveItem
+  File=AandH Mute Control-QU r0.0.ush
+  Scope=1
+[END]
+[BEGIN]
+  ObjTp=ArchiveItem
+  File=AandH Fader Level Control-QU r0.0.ush
+  Scope=1
+[END]
+[BEGIN]
+  ObjTp=ArchiveItem
+  File=AandH Send Level Control-QU r0.0.ush
+  Scope=1
+[END]

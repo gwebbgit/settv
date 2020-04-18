@@ -41,8 +41,6 @@ namespace UserModule_LOGGER3
     
     public override void LogosSplusInitialize()
     {
-        SocketInfo __socketinfo__ = new SocketInfo( 1, this );
-        InitialParametersClass.ResolveHostName = __socketinfo__.ResolveHostName;
         _SplusNVRAM = new SplusNVRAM( this );
         
         IN = new InOutArray<DigitalInput>( 3, this );

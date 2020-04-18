@@ -1,0 +1,97 @@
+[BEGIN]
+  Version=1
+[END]
+[BEGIN]
+  ObjTp=FSgntr
+  Sgntr=UserSPlus
+  RelVrs=1
+  IntStrVrs=1
+  SPlusVrs=4.04.01
+  CrossCplrVrs=1.3
+[END]
+[BEGIN]
+  ObjTp=Hd
+  Cmn1=AandH Scene Control-QU r0.0\\\\Triggers scene recalls on QU series||1
+  Cmn2=Mixers.\\  **This is a 1-way module. All feedback provided is generated\\
+  Cmn3=||2logically inside the module.\\  \\  This module uses a TCP/IP||1
+  Cmn4=client symbol on port 51325.\\  See demo program for example setup.
+  Cmn5=\\\\Inputs:\\ Analog-\\ Scene: The scene you want to recall in Decimal||1
+  Cmn6=format.\\ MidiChnl: The MidiChnl to control in decimal format.\\
+  Cmn7=||1\\ Digital-\\  Take: Sets the scene selected on the Midi Channel||1
+  Cmn8=selected.\\  \\Outputs:\\ Serial-\\  ToMixer: Connect to the TCP/IP||1
+  Cmn9=symbol Transmit line.\\\\Reference the QU Mixer MIDI protocol for||1
+  Cmn10=more details and valid Control\\Channels for the selected control||1
+  Cmn11=type.\\\\Note 1: Not all comninations of scenes and MidiChannels||1
+  Cmn12=module are valid for\\ all QU series mixers. Please refer to the||1
+  Cmn13=protocol documentation for more information.\\\\Note 2: The QU series||1
+  Cmn14=mixers return a near constant \xFF on the receiver line of the TCP/IP\\
+  Cmn15=||1connection, as well as a VERY large data dump when a scene is recalled.
+  Cmn16=||2This can easily\\ overwhelm the the receive buffers on the Crestron||1
+  Cmn17=processor if care is not taken.\\ Because of this, this module suite||1
+  Cmn18=was built to be 1-way. It is recomended to comment out\\ the receive||1
+  Cmn19=line from the TCP/IP symbol so that your buffers do not generate||1
+  Cmn20=continuous\\ errors in the control system log.\\\\For more information||1
+  Cmn21=Reference: Qu_MIDI_Protocol_V1.9.pdf\\\\Tested with QU firmware||1
+  Cmn22=V1.95\\\\Release: 2018-12-01 Release r0.0\\
+[END]
+[BEGIN]
+  ObjTp=Symbol
+  Exclusions=1,19,20,21,88,89,167,168,179,213,214,215,216,217,225,226,248,249,266,267,310,362,378,380,405,407,408,409,478,522,537,554,586,590,611,624,718,756,767,830,841,842,854,883,955,1032,1062,1079,1128,1129,1134,1140,1157,1158,1195,1199,1220,1221,1222,1223,1299,1348,1349,1439,1472,1473,1499,1746,1803,1975,2229,2354,2514,2523,2532,2706,2707,3235,3236,3427,3454,3567,3568,3601,3602,3708,3902,3903,3912,3918,3925,3926,4206,4207,
+  Exclusions_CDS=5
+  Inclusions_CDS=6
+  Name=AandH Scene Control-QU r0.0
+  SmplCName=AandH Scene Control-QU r0.0.usp
+  Code=1
+  SysRev5=4.000
+  SMWRev=2.02.05
+  InputCue1=Take
+  InputSigType1=Digital
+  InputList2Cue1=Scene
+  InputList2SigType1=Analog
+  InputList2Cue2=MidiChnl
+  InputList2SigType2=Analog
+  OutputList2Cue1=ToMixer
+  OutputList2SigType1=Serial
+  ParamCue1=[Reference Name]
+  MinVariableInputs=1
+  MaxVariableInputs=1
+  MinVariableInputsList2=2
+  MaxVariableInputsList2=2
+  MinVariableOutputs=0
+  MaxVariableOutputs=0
+  MinVariableOutputsList2=1
+  MaxVariableOutputsList2=1
+  MinVariableParams=0
+  MaxVariableParams=0
+  Expand=expand_separately
+  Expand2=expand_separately
+  ProgramTree=Logic
+  SymbolTree=34
+  Hint=
+  PdfHelp=
+  HelpID= 
+  Render=4
+  Smpl-C=16
+  CompilerCode=-48
+  CompilerParamCode=27
+  CompilerParamCode5=14
+  NumFixedParams=1
+  Pp1=1
+  MPp=1
+  NVStorage=10
+  ParamSigType1=String
+  SmplCInputCue1=o#
+  SmplCOutputCue1=i#
+  SmplCInputList2Cue1=an#
+  SmplCOutputList2Cue1=ai#
+  SPlus2CompiledName=S2_AandH_Scene_Control_QU_r0_0
+  SymJam=NonExclusive
+  FileName=AandH Scene Control-QU r0.0.ush
+  SIMPLPlusModuleEncoding=0
+[END]
+[BEGIN]
+  ObjTp=Dp
+  H=1
+  Tp=1
+  NoS=False
+[END]

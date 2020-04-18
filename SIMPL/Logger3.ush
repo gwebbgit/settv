@@ -21,6 +21,7 @@
   SmplCName=Logger3.usp
   Code=1
   SysRev5=3.154
+  SMWRev=2.02.05
   InputCue1=in[#]
   InputSigType1=Digital
   ParamCue1=[Reference Name]
