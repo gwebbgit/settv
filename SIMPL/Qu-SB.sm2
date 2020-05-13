@@ -1709,7 +1709,7 @@ ObjTp=Et
 H=3
 DvH=708
 IPM=255.255.255.0
-IPA=192.168.1.110
+IPA=192.168.1.205
 ]
 [
 ObjTp=Sm
@@ -3157,7 +3157,7 @@ PrH=4
 CF=2
 n1I=6
 n1O=6
-Cmn1=MuteGrp 1\\
+Cmn1=MG1 MUSIC\\
 mI=6
 I4=71
 I5=71
