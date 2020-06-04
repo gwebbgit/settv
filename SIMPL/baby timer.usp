@@ -1,0 +1,137 @@
+/*******************************************************************************************
+  SIMPL+ Module Information
+  (Fill in comments below)
+*******************************************************************************************/
+/*
+Dealer Name:
+System Name: baby timer for sleep/wake/TOD
+System Number:
+Programmer: GW
+Comments:
+*/
+
+/*******************************************************************************************
+  Compiler Directives
+  (Uncomment and declare compiler directives as needed)
+*******************************************************************************************/
+// #ENABLE_DYNAMIC
+// #SYMBOL_NAME ""
+// #HINT ""
+// #DEFINE_CONSTANT
+// #CATEGORY "" 
+// #PRINT_TO_TRACE
+// #DIGITAL_EXPAND 
+// #ANALOG_SERIAL_EXPAND 
+// #OUTPUT_SHIFT 
+// #HELP_PDF_FILE ""
+#DEFAULT_VOLATILE
+#ENABLE_STACK_CHECKING
+#ENABLE_TRACE
+// #ENCODING_ASCII
+// #ENCODING_UTF16
+// #ENCODING_INHERIT_FROM_PARENT
+// #ENCODING_INHERIT_FROM_PROGRAM
+/*
+#HELP_BEGIN
+   (add additional lines of help lines)
+#HELP_END
+*/
+
+#DEFINE_CONSTANT UPDATE_INTERVAL 200	//200=2seconds refresh for h/m counter
+
+DIGITAL_INPUT
+	sleep_pr,
+	wake_pr,
+	off_pr
+	;
+
+STRING_OUTPUT
+	tod$,
+	since_title$,
+	since_time$,
+	duration_title$,
+	duration_h$,
+	duration_unit$,
+	date$
+	;
+ANALOG_OUTPUT
+	select_item#,
+	deselect_item#
+	;
+
+INTEGER
+	i_start_h, i_start_m, i_start_s;
+
+FUNCTION set_start_now() {
+	i_start_h = GetHourNum();
+	i_start_m = GetMinutesNum();
+	i_start_s = GetSecondsNum();
+	MakeString ( since_time$, "%u:%02u", i_start_h, i_start_m);
+	duration_title$ = "DURATION";
+	duration_h$ = "0";
+	duration_unit$ = "hr";
+}
+
+FUNCTION update_times() {
+	integer h, m, s;
+	h = GetHourNum();
+	m = GetMinutesNum();
+	s = GetSecondsNum();
+
+	/* Time of Day and Date */
+	MakeString ( tod$, "%u:%02u", h, m );
+	MakeString ( date$, "%s %s %u, %u", Left(Day(), 3), Left(Month(), 3), GetDateNum(), GetYearNum() );
+
+	/* Skip duration if not running */
+	if ( select_item# = 3 || select_item# = 0 ) return;
+
+	/* Wrap properly */
+	if ( s < i_start_s ) {
+		s = s + 60;
+		m = m - 1;
+	}
+	if ( m < i_start_m ) {
+		m = m + 60;
+		h = h - 1;
+	}
+	if ( h < i_start_h ) {
+		h = h + 24;
+	}
+	duration_h$ = IToA ( h - i_start_h );
+	duration_unit$ = "hr";
+}
+
+FUNCTION select_item ( integer sel ) {
+	if ( sel != 1 ) deselect_item# = 1;
+	if ( sel != 2 ) deselect_item# = 2;
+	if ( sel != 3 ) deselect_item# = 3;
+	select_item# = sel;
+}
+
+PUSH sleep_pr {
+	select_item ( 1 );
+	since_title$ = "SLEEPING SINCE";
+	set_start_now();
+}
+PUSH wake_pr {
+	select_item ( 2 );
+	since_title$ = "AWAKE SINCE";
+	set_start_now();
+}
+PUSH off_pr {
+	select_item ( 3 );
+	since_title$ = "";
+	since_time$ = "";
+	duration_title$ = "";
+	duration_h$ = "";
+	duration_unit$ = "";
+	Delay ( 100 );
+	deselect_item# = 3;  //darken hiliting when off
+}
+function Main() {
+	WaitForInitializationComplete();
+	while ( 1 ) {
+		update_times();
+		Delay ( UPDATE_INTERVAL );
+	}
+}
