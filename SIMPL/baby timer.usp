@@ -8,6 +8,11 @@ System Name: baby timer for sleep/wake/TOD
 System Number:
 Programmer: GW
 Comments:
+
+ + TODO: if duration is negative (start time is in future), then duration should show
+   negative, not 23:55 (wrapped) or whatever.
+   Actually this problem is worse than that...more complicated; needs fixing.  FIXME
+
 */
 
 /*******************************************************************************************
@@ -26,7 +31,9 @@ Comments:
 // #HELP_PDF_FILE ""
 #DEFAULT_VOLATILE
 #ENABLE_STACK_CHECKING
+
 #ENABLE_TRACE
+
 // #ENCODING_ASCII
 // #ENCODING_UTF16
 // #ENCODING_INHERIT_FROM_PARENT
@@ -42,7 +49,14 @@ Comments:
 DIGITAL_INPUT
 	sleep_pr,
 	wake_pr,
-	off_pr
+	off_pr,
+	time_inc_pr,
+	time_dec_pr
+	;
+
+ANALOG_INPUT
+	arg1,
+	arg2
 	;
 
 STRING_OUTPUT
@@ -72,11 +86,13 @@ FUNCTION set_start_now() {
 	duration_unit$ = "hr";
 }
 
-FUNCTION update_times() {
-	integer h, m, s;
+FUNCTION update_times() {	//updates TOD clocks and duration fields
+	integer h, m, s, dec;
+	signed_integer dur_h;
 	h = GetHourNum();
 	m = GetMinutesNum();
 	s = GetSecondsNum();
+	Trace ( "update_times()...\n" );
 
 	/* Time of Day and Date */
 	MakeString ( tod$, "%u:%02u", h, m );
@@ -97,7 +113,28 @@ FUNCTION update_times() {
 	if ( h < i_start_h ) {
 		h = h + 24;
 	}
-	duration_h$ = IToA ( h - i_start_h );
+	if ( m < i_start_m ) {
+		/* m is before start m; check 12 hours either way */
+		if ( i_start_m - m < 12 ) {
+			/* Within 12 hours earlier: time duration from m till i_start_m */
+			dur_h = 0; //FIXME
+			dec = 0; //FIXME
+			Trace ( ">>>dur_h within 12 hours earlier... FIXME\n" );
+
+
+
+		} else {
+			/* Within 12 hours later, must be after midnight: add 24 to h */
+			//FIXME h = h + 24;
+			Trace ( ">>>dur_h else within 12 hours later, must be after midnight; add 24 to h... FIXME\n" );
+		}
+	}
+
+	/* Get decimal */
+	dur_h = h - i_start_h;
+	dec = (m-i_start_m) / 6; //60 shifted 1 decimal place
+	Trace ( "\tm=%u:%d, i_start_m=%u  dur_h=%u:%d  dec=%u\n", m,m, i_start_m, dur_h,dur_h, dec );
+	MakeString ( duration_h$, "%d.%u", dur_h, dec );
 	duration_unit$ = "hr";
 }
 
@@ -106,6 +143,32 @@ FUNCTION select_item ( integer sel ) {
 	if ( sel != 2 ) deselect_item# = 2;
 	if ( sel != 3 ) deselect_item# = 3;
 	select_item# = sel;
+}
+FUNCTION inc_time ( signed_integer inc ) {
+	signed_integer m;
+	m = i_start_m + inc;
+	Trace ( "inc_time(%d) m=%d i_start_h=%u, i_start_m=%u,  m S/ 60=%u  m%60=%u m%60=%d\n", inc, m, i_start_h, i_start_m, m S/ 60, m%60, m%60 );
+
+	/* Under/overflow m */
+	i_start_h = i_start_h + ( m S/ 60 );  //signed division
+	i_start_h = i_start_h % 24;
+	while ( m < 0 ) {   //apparently MOD (%) does not work correctly for negative numbers, so mod negative numbers manually
+		Trace ( "\t\tm=m+60 (m=%u:%d)\n", m,m );
+		m = m + 60;  //shift 60 minutes forward
+		i_start_h = i_start_h - 1;
+		if ( i_start_h < 0 ) i_start_h = 23; //wrap to 23 (assuming i_start_h was positive to begin with)
+		Trace ( "\t\t\ti_start_h <- %u:%d\n", i_start_h, i_start_h );
+	}
+	m = m % 60; //mod positive numbers
+	Trace ( "\t\tm % 60 = (%u:%d)\n", m,m );
+	i_start_m = m;
+	Trace ( "\tnewh=%u newm=%u, m=%u m=%d\n", i_start_h, i_start_m, m,m );
+	m = m % 60;
+	Trace ( "\tm=%u m=%d\n", m,m );
+
+	/* Update affected fields */
+	MakeString ( since_time$, "%u:%02u", i_start_h, i_start_m);
+	update_times();
 }
 
 PUSH sleep_pr {
@@ -128,10 +191,26 @@ PUSH off_pr {
 	Delay ( 100 );
 	deselect_item# = 3;  //darken hiliting when off
 }
+PUSH time_inc_pr {
+	inc_time ( 10 );
+
+}
+PUSH time_dec_pr {
+	inc_time ( -10 );
+
+}
 function Main() {
 	WaitForInitializationComplete();
 	while ( 1 ) {
 		update_times();
 		Delay ( UPDATE_INTERVAL );
 	}
+}
+CHANGE arg1
+CHANGE arg2 {
+	signed_integer r1;
+	integer r2;
+	r1 = arg1 MOD arg2;
+	r2 = arg1 MOD arg2;
+	Trace ( "(%u:%d) % (%u:%d) = (%u:%d)(%u:%d)\n", arg1,arg1, arg2,arg2, r1,r1, r2,r2 );
 }
