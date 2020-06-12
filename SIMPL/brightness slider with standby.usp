@@ -1,0 +1,76 @@
+/*******************************************************************************************
+  SIMPL+ Module Information
+  (Fill in comments below)
+*******************************************************************************************/
+/*
+Dealer Name:
+System Name:
+System Number:
+Programmer:
+Comments:
+*/
+
+/*******************************************************************************************
+  Compiler Directives
+  (Uncomment and declare compiler directives as needed)
+*******************************************************************************************/
+// #ENABLE_DYNAMIC
+// #SYMBOL_NAME ""
+// #HINT ""
+// #DEFINE_CONSTANT
+// #CATEGORY "" 
+// #PRINT_TO_TRACE
+// #DIGITAL_EXPAND 
+// #ANALOG_SERIAL_EXPAND 
+// #OUTPUT_SHIFT 
+// #HELP_PDF_FILE ""
+#DEFAULT_VOLATILE
+#ENABLE_STACK_CHECKING
+#ENABLE_TRACE
+// #ENCODING_ASCII
+// #ENCODING_UTF16
+// #ENCODING_INHERIT_FROM_PARENT
+// #ENCODING_INHERIT_FROM_PROGRAM
+/*
+#HELP_BEGIN
+   (add additional lines of help lines)
+#HELP_END
+*/
+
+DIGITAL_INPUT
+	press,
+	backlight_is_onF
+	;
+
+DIGITAL_OUTPUT
+	backlight_on,
+	backlight_off
+	;
+
+ANALOG_INPUT
+	slider,
+	brightnessF#
+	;
+
+INTEGER Save_Brightness#;
+
+PUSH press {
+	/* Grab the brightness before the slider changes it */
+	//THIS DOESN'T ACTUALLY WORK.....FIXME
+	Save_Brightness# = brightnessF#; 
+	Trace ( "Setting Save_Brightness to %u\n", Save_Brightness# );
+
+}
+THREADSAFE CHANGE slider {
+	if ( slider < 10000 ) {
+		if ( backlight_is_onF ) {
+			/* Turn Off */
+			Pulse ( 10, backlight_off );
+			Trace ( "NEED TO SET RESTORE BRIGHTNESS TO %u\n", Save_Brightness# );
+		}
+	} else if ( !backlight_is_onF ) {
+		/* Turn On */
+		Pulse ( 10, backlight_on );
+		Trace ( "TURNING ON BACKLIGHT\n" );
+	}
+}

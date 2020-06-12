@@ -4,7 +4,7 @@ Sgntr=SGD
 RelVrs=3
 VTProeVer=6.2.00
 Schema=1
-CRCGUID=A17ABFF8-34A7-4E05-91CC-62EE8DE746BB
+CRCGUID=F88B0BAC-A804-4E9D-B693-DAD4EE5B4DCD
 ]
 ;================================================================================
 [
@@ -20,7 +20,7 @@ Hint=SLEEP|WAKE|OFF SELECTOR (Smart Object ID=2)
 Code=1
 SGControlType=Button List Horizontal
 SGControlName=SLEEP|WAKE|OFF SELECTOR
-GUID=51BEC416-50AE-48FC-B550-6573DA7B307C
+GUID=E7FF8F33-2ADA-439C-9553-0DC1C755384E
 SmplCName=IPAD-SetteTVNursery_Clock Screensaver_SLEEP_WAKE_OFF SELECTOR.ced
 SMWRev=4.02.19
 Expand=expand_random
