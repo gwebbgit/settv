@@ -202,6 +202,7 @@ PUSH time_dec_pr {
 }
 function Main() {
 	WaitForInitializationComplete();
+	if ( save_select > 0 ) select_item ( save_select ); //recall selection from NVRAM
 	while ( 1 ) {
 		update_times();
 		Delay ( UPDATE_INTERVAL );
