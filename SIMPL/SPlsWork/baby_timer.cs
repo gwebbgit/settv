@@ -32,20 +32,17 @@ namespace UserModule_BABY_TIMER
         Crestron.Logos.SplusObjects.StringOutput DATE__DOLLAR__;
         Crestron.Logos.SplusObjects.AnalogOutput SELECT_ITEM__POUND__;
         Crestron.Logos.SplusObjects.AnalogOutput DESELECT_ITEM__POUND__;
-        ushort I_START_H = 0;
-        ushort I_START_M = 0;
-        ushort I_START_S = 0;
         private void SET_START_NOW (  SplusExecutionContext __context__ ) 
             { 
             
             __context__.SourceCodeLine = 80;
-            I_START_H = (ushort) ( Functions.GetHourNum() ) ; 
+            _SplusNVRAM.I_START_H = (ushort) ( Functions.GetHourNum() ) ; 
             __context__.SourceCodeLine = 81;
-            I_START_M = (ushort) ( Functions.GetMinutesNum() ) ; 
+            _SplusNVRAM.I_START_M = (ushort) ( Functions.GetMinutesNum() ) ; 
             __context__.SourceCodeLine = 82;
-            I_START_S = (ushort) ( Functions.GetSecondsNum() ) ; 
+            _SplusNVRAM.I_START_S = (ushort) ( Functions.GetSecondsNum() ) ; 
             __context__.SourceCodeLine = 83;
-            MakeString ( SINCE_TIME__DOLLAR__ , "{0:d}:{1:d2}", (ushort)I_START_H, (ushort)I_START_M) ; 
+            MakeString ( SINCE_TIME__DOLLAR__ , "{0:d}:{1:d2}", (ushort)_SplusNVRAM.I_START_H, (ushort)_SplusNVRAM.I_START_M) ; 
             __context__.SourceCodeLine = 84;
             DURATION_TITLE__DOLLAR__  .UpdateValue ( "DURATION"  ) ; 
             __context__.SourceCodeLine = 85;
@@ -85,7 +82,7 @@ namespace UserModule_BABY_TIMER
                 }
             
             __context__.SourceCodeLine = 105;
-            if ( Functions.TestForTrue  ( ( Functions.BoolToInt ( S < I_START_S ))  ) ) 
+            if ( Functions.TestForTrue  ( ( Functions.BoolToInt ( S < _SplusNVRAM.I_START_S ))  ) ) 
                 { 
                 __context__.SourceCodeLine = 106;
                 S = (ushort) ( (S + 60) ) ; 
@@ -94,7 +91,7 @@ namespace UserModule_BABY_TIMER
                 } 
             
             __context__.SourceCodeLine = 109;
-            if ( Functions.TestForTrue  ( ( Functions.BoolToInt ( M < I_START_M ))  ) ) 
+            if ( Functions.TestForTrue  ( ( Functions.BoolToInt ( M < _SplusNVRAM.I_START_M ))  ) ) 
                 { 
                 __context__.SourceCodeLine = 110;
                 M = (ushort) ( (M + 60) ) ; 
@@ -103,17 +100,17 @@ namespace UserModule_BABY_TIMER
                 } 
             
             __context__.SourceCodeLine = 113;
-            if ( Functions.TestForTrue  ( ( Functions.BoolToInt ( H < I_START_H ))  ) ) 
+            if ( Functions.TestForTrue  ( ( Functions.BoolToInt ( H < _SplusNVRAM.I_START_H ))  ) ) 
                 { 
                 __context__.SourceCodeLine = 114;
                 H = (ushort) ( (H + 24) ) ; 
                 } 
             
             __context__.SourceCodeLine = 116;
-            if ( Functions.TestForTrue  ( ( Functions.BoolToInt ( M < I_START_M ))  ) ) 
+            if ( Functions.TestForTrue  ( ( Functions.BoolToInt ( M < _SplusNVRAM.I_START_M ))  ) ) 
                 { 
                 __context__.SourceCodeLine = 118;
-                if ( Functions.TestForTrue  ( ( Functions.BoolToInt ( (I_START_M - M) < 12 ))  ) ) 
+                if ( Functions.TestForTrue  ( ( Functions.BoolToInt ( (_SplusNVRAM.I_START_M - M) < 12 ))  ) ) 
                     { 
                     __context__.SourceCodeLine = 120;
                     DUR_H = (short) ( 0 ) ; 
@@ -132,11 +129,11 @@ namespace UserModule_BABY_TIMER
                 } 
             
             __context__.SourceCodeLine = 134;
-            DUR_H = (short) ( (H - I_START_H) ) ; 
+            DUR_H = (short) ( (H - _SplusNVRAM.I_START_H) ) ; 
             __context__.SourceCodeLine = 135;
-            DEC = (ushort) ( ((M - I_START_M) / 6) ) ; 
+            DEC = (ushort) ( ((M - _SplusNVRAM.I_START_M) / 6) ) ; 
             __context__.SourceCodeLine = 136;
-            Trace( "\tm={0:d}:{1:d}, i_start_m={2:d}  dur_h={3:d}:{4:d}  dec={5:d}\r\n", (ushort)M, (short)M, (ushort)I_START_M, (ushort)DUR_H, (short)DUR_H, (ushort)DEC) ; 
+            Trace( "\tm={0:d}:{1:d}, i_start_m={2:d}  dur_h={3:d}:{4:d}  dec={5:d}\r\n", (ushort)M, (short)M, (ushort)_SplusNVRAM.I_START_M, (ushort)DUR_H, (short)DUR_H, (ushort)DEC) ; 
             __context__.SourceCodeLine = 137;
             MakeString ( DURATION_H__DOLLAR__ , "{0:d}.{1:d}", (short)DUR_H, (ushort)DEC) ; 
             __context__.SourceCodeLine = 138;
@@ -170,6 +167,8 @@ namespace UserModule_BABY_TIMER
             
             __context__.SourceCodeLine = 145;
             SELECT_ITEM__POUND__  .Value = (ushort) ( SEL ) ; 
+            __context__.SourceCodeLine = 146;
+            _SplusNVRAM.SAVE_SELECT = (ushort) ( SEL ) ; 
             
             }
             
@@ -178,50 +177,50 @@ namespace UserModule_BABY_TIMER
             short M = 0;
             
             
-            __context__.SourceCodeLine = 149;
-            M = (short) ( (I_START_M + INC) ) ; 
             __context__.SourceCodeLine = 150;
-            Trace( "inc_time({0:d}) m={1:d} i_start_h={2:d}, i_start_m={3:d},  m S/ 60={4:d}  m%60={5:d} m%60={6:d}\r\n", (short)INC, (short)M, (ushort)I_START_H, (ushort)I_START_M, (ushort)Divide( M , 60 ), (ushort)Mod( M , 60 ), (short)Mod( M , 60 )) ; 
-            __context__.SourceCodeLine = 153;
-            I_START_H = (ushort) ( (I_START_H + Divide( M , 60 )) ) ; 
+            M = (short) ( (_SplusNVRAM.I_START_M + INC) ) ; 
+            __context__.SourceCodeLine = 151;
+            Trace( "inc_time({0:d}) m={1:d} i_start_h={2:d}, i_start_m={3:d},  m S/ 60={4:d}  m%60={5:d} m%60={6:d}\r\n", (short)INC, (short)M, (ushort)_SplusNVRAM.I_START_H, (ushort)_SplusNVRAM.I_START_M, (ushort)Divide( M , 60 ), (ushort)Mod( M , 60 ), (short)Mod( M , 60 )) ; 
             __context__.SourceCodeLine = 154;
-            I_START_H = (ushort) ( Mod( I_START_H , 24 ) ) ; 
+            _SplusNVRAM.I_START_H = (ushort) ( (_SplusNVRAM.I_START_H + Divide( M , 60 )) ) ; 
             __context__.SourceCodeLine = 155;
+            _SplusNVRAM.I_START_H = (ushort) ( Mod( _SplusNVRAM.I_START_H , 24 ) ) ; 
+            __context__.SourceCodeLine = 156;
             while ( Functions.TestForTrue  ( ( Functions.BoolToInt ( M < 0 ))  ) ) 
                 { 
-                __context__.SourceCodeLine = 156;
-                Trace( "\t\tm=m+60 (m={0:d}:{1:d})\r\n", (ushort)M, (short)M) ; 
                 __context__.SourceCodeLine = 157;
-                M = (short) ( (M + 60) ) ; 
+                Trace( "\t\tm=m+60 (m={0:d}:{1:d})\r\n", (ushort)M, (short)M) ; 
                 __context__.SourceCodeLine = 158;
-                I_START_H = (ushort) ( (I_START_H - 1) ) ; 
+                M = (short) ( (M + 60) ) ; 
                 __context__.SourceCodeLine = 159;
-                if ( Functions.TestForTrue  ( ( Functions.BoolToInt ( I_START_H < 0 ))  ) ) 
+                _SplusNVRAM.I_START_H = (ushort) ( (_SplusNVRAM.I_START_H - 1) ) ; 
+                __context__.SourceCodeLine = 160;
+                if ( Functions.TestForTrue  ( ( Functions.BoolToInt ( _SplusNVRAM.I_START_H < 0 ))  ) ) 
                     {
-                    __context__.SourceCodeLine = 159;
-                    I_START_H = (ushort) ( 23 ) ; 
+                    __context__.SourceCodeLine = 160;
+                    _SplusNVRAM.I_START_H = (ushort) ( 23 ) ; 
                     }
                 
-                __context__.SourceCodeLine = 160;
-                Trace( "\t\t\ti_start_h <- {0:d}:{1:d}\r\n", (ushort)I_START_H, (short)I_START_H) ; 
-                __context__.SourceCodeLine = 155;
+                __context__.SourceCodeLine = 161;
+                Trace( "\t\t\ti_start_h <- {0:d}:{1:d}\r\n", (ushort)_SplusNVRAM.I_START_H, (short)_SplusNVRAM.I_START_H) ; 
+                __context__.SourceCodeLine = 156;
                 } 
             
-            __context__.SourceCodeLine = 162;
-            M = (short) ( Mod( M , 60 ) ) ; 
             __context__.SourceCodeLine = 163;
-            Trace( "\t\tm %60 = ({0:d}:{1:d})\r\n", (ushort)M, (short)M) ; 
-            __context__.SourceCodeLine = 164;
-            I_START_M = (ushort) ( M ) ; 
-            __context__.SourceCodeLine = 165;
-            Trace( "\tnewh={0:d} newm={1:d}, m={2:d} m={3:d}\r\n", (ushort)I_START_H, (ushort)I_START_M, (ushort)M, (short)M) ; 
-            __context__.SourceCodeLine = 166;
             M = (short) ( Mod( M , 60 ) ) ; 
+            __context__.SourceCodeLine = 164;
+            Trace( "\t\tm %60 = ({0:d}:{1:d})\r\n", (ushort)M, (short)M) ; 
+            __context__.SourceCodeLine = 165;
+            _SplusNVRAM.I_START_M = (ushort) ( M ) ; 
+            __context__.SourceCodeLine = 166;
+            Trace( "\tnewh={0:d} newm={1:d}, m={2:d} m={3:d}\r\n", (ushort)_SplusNVRAM.I_START_H, (ushort)_SplusNVRAM.I_START_M, (ushort)M, (short)M) ; 
             __context__.SourceCodeLine = 167;
+            M = (short) ( Mod( M , 60 ) ) ; 
+            __context__.SourceCodeLine = 168;
             Trace( "\tm={0:d} m={1:d}\r\n", (ushort)M, (short)M) ; 
-            __context__.SourceCodeLine = 170;
-            MakeString ( SINCE_TIME__DOLLAR__ , "{0:d}:{1:d2}", (ushort)I_START_H, (ushort)I_START_M) ; 
             __context__.SourceCodeLine = 171;
+            MakeString ( SINCE_TIME__DOLLAR__ , "{0:d}:{1:d2}", (ushort)_SplusNVRAM.I_START_H, (ushort)_SplusNVRAM.I_START_M) ; 
+            __context__.SourceCodeLine = 172;
             UPDATE_TIMES (  __context__  ) ; 
             
             }
@@ -234,11 +233,11 @@ namespace UserModule_BABY_TIMER
             {
                 SplusExecutionContext __context__ = SplusThreadStartCode(__SignalEventArg__);
                 
-                __context__.SourceCodeLine = 175;
-                SELECT_ITEM (  __context__ , (ushort)( 1 )) ; 
                 __context__.SourceCodeLine = 176;
-                SINCE_TITLE__DOLLAR__  .UpdateValue ( "SLEEPING SINCE"  ) ; 
+                SELECT_ITEM (  __context__ , (ushort)( 1 )) ; 
                 __context__.SourceCodeLine = 177;
+                SINCE_TITLE__DOLLAR__  .UpdateValue ( "SLEEPING SINCE"  ) ; 
+                __context__.SourceCodeLine = 178;
                 SET_START_NOW (  __context__  ) ; 
                 
                 
@@ -257,11 +256,11 @@ namespace UserModule_BABY_TIMER
         {
             SplusExecutionContext __context__ = SplusThreadStartCode(__SignalEventArg__);
             
-            __context__.SourceCodeLine = 180;
-            SELECT_ITEM (  __context__ , (ushort)( 2 )) ; 
             __context__.SourceCodeLine = 181;
-            SINCE_TITLE__DOLLAR__  .UpdateValue ( "AWAKE SINCE"  ) ; 
+            SELECT_ITEM (  __context__ , (ushort)( 2 )) ; 
             __context__.SourceCodeLine = 182;
+            SINCE_TITLE__DOLLAR__  .UpdateValue ( "AWAKE SINCE"  ) ; 
+            __context__.SourceCodeLine = 183;
             SET_START_NOW (  __context__  ) ; 
             
             
@@ -280,21 +279,21 @@ object OFF_PR_OnPush_2 ( Object __EventInfo__ )
     {
         SplusExecutionContext __context__ = SplusThreadStartCode(__SignalEventArg__);
         
-        __context__.SourceCodeLine = 185;
-        SELECT_ITEM (  __context__ , (ushort)( 3 )) ; 
         __context__.SourceCodeLine = 186;
-        SINCE_TITLE__DOLLAR__  .UpdateValue ( ""  ) ; 
+        SELECT_ITEM (  __context__ , (ushort)( 3 )) ; 
         __context__.SourceCodeLine = 187;
-        SINCE_TIME__DOLLAR__  .UpdateValue ( ""  ) ; 
+        SINCE_TITLE__DOLLAR__  .UpdateValue ( ""  ) ; 
         __context__.SourceCodeLine = 188;
-        DURATION_TITLE__DOLLAR__  .UpdateValue ( ""  ) ; 
+        SINCE_TIME__DOLLAR__  .UpdateValue ( ""  ) ; 
         __context__.SourceCodeLine = 189;
-        DURATION_H__DOLLAR__  .UpdateValue ( ""  ) ; 
+        DURATION_TITLE__DOLLAR__  .UpdateValue ( ""  ) ; 
         __context__.SourceCodeLine = 190;
-        DURATION_UNIT__DOLLAR__  .UpdateValue ( ""  ) ; 
+        DURATION_H__DOLLAR__  .UpdateValue ( ""  ) ; 
         __context__.SourceCodeLine = 191;
-        Functions.Delay (  (int) ( 100 ) ) ; 
+        DURATION_UNIT__DOLLAR__  .UpdateValue ( ""  ) ; 
         __context__.SourceCodeLine = 192;
+        Functions.Delay (  (int) ( 100 ) ) ; 
+        __context__.SourceCodeLine = 193;
         DESELECT_ITEM__POUND__  .Value = (ushort) ( 3 ) ; 
         
         
@@ -313,7 +312,7 @@ object TIME_INC_PR_OnPush_3 ( Object __EventInfo__ )
     {
         SplusExecutionContext __context__ = SplusThreadStartCode(__SignalEventArg__);
         
-        __context__.SourceCodeLine = 195;
+        __context__.SourceCodeLine = 196;
         INC_TIME (  __context__ , (short)( 10 )) ; 
         
         
@@ -332,7 +331,7 @@ object TIME_DEC_PR_OnPush_4 ( Object __EventInfo__ )
     {
         SplusExecutionContext __context__ = SplusThreadStartCode(__SignalEventArg__);
         
-        __context__.SourceCodeLine = 199;
+        __context__.SourceCodeLine = 200;
         INC_TIME (  __context__ , (short)( Functions.ToSignedInteger( -( 10 ) ) )) ; 
         
         
@@ -349,16 +348,23 @@ public override object FunctionMain (  object __obj__ )
     {
         SplusExecutionContext __context__ = SplusFunctionMainStartCode();
         
-        __context__.SourceCodeLine = 203;
-        WaitForInitializationComplete ( ) ; 
         __context__.SourceCodeLine = 204;
+        WaitForInitializationComplete ( ) ; 
+        __context__.SourceCodeLine = 205;
+        if ( Functions.TestForTrue  ( ( Functions.BoolToInt ( _SplusNVRAM.SAVE_SELECT > 0 ))  ) ) 
+            {
+            __context__.SourceCodeLine = 205;
+            SELECT_ITEM (  __context__ , (ushort)( _SplusNVRAM.SAVE_SELECT )) ; 
+            }
+        
+        __context__.SourceCodeLine = 206;
         while ( Functions.TestForTrue  ( ( 1)  ) ) 
             { 
-            __context__.SourceCodeLine = 205;
+            __context__.SourceCodeLine = 207;
             UPDATE_TIMES (  __context__  ) ; 
-            __context__.SourceCodeLine = 206;
+            __context__.SourceCodeLine = 208;
             Functions.Delay (  (int) ( 200 ) ) ; 
-            __context__.SourceCodeLine = 204;
+            __context__.SourceCodeLine = 206;
             } 
         
         
@@ -381,11 +387,11 @@ object ARG1_OnChange_5 ( Object __EventInfo__ )
         ushort R2 = 0;
         
         
-        __context__.SourceCodeLine = 213;
-        R1 = (short) ( Mod( ARG1  .ShortValue , ARG2  .ShortValue ) ) ; 
-        __context__.SourceCodeLine = 214;
-        R2 = (ushort) ( Mod( ARG1  .UshortValue , ARG2  .UshortValue ) ) ; 
         __context__.SourceCodeLine = 215;
+        R1 = (short) ( Mod( ARG1  .ShortValue , ARG2  .ShortValue ) ) ; 
+        __context__.SourceCodeLine = 216;
+        R2 = (ushort) ( Mod( ARG1  .UshortValue , ARG2  .UshortValue ) ) ; 
+        __context__.SourceCodeLine = 217;
         Trace( "({0:d}:{1:d}) %({2:d}:{3:d}) = ({4:d}:{5:d})({6:d}:{7:d})\r\n", (ushort)ARG1  .UshortValue, (short)ARG1  .UshortValue, (ushort)ARG2  .UshortValue, (short)ARG2  .UshortValue, (ushort)R1, (short)R1, (ushort)R2, (short)R2) ; 
         
         
@@ -500,7 +506,15 @@ public class SplusNVRAM : SplusStructureBase
 
     public SplusNVRAM( SplusObject __caller__ ) : base( __caller__ ) {}
     
-    
+    [SplusStructAttribute(0, false, true)]
+            public ushort I_START_H = 0;
+            [SplusStructAttribute(1, false, true)]
+            public ushort I_START_M = 0;
+            [SplusStructAttribute(2, false, true)]
+            public ushort I_START_S = 0;
+            [SplusStructAttribute(3, false, true)]
+            public ushort SAVE_SELECT = 0;
+            
 }
 
 SplusNVRAM _SplusNVRAM = null;

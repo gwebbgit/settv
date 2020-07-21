@@ -73,8 +73,8 @@ ANALOG_OUTPUT
 	deselect_item#
 	;
 
-INTEGER
-	i_start_h, i_start_m, i_start_s;
+NONVOLATILE INTEGER
+	i_start_h, i_start_m, i_start_s, save_select;
 
 FUNCTION set_start_now() {
 	i_start_h = GetHourNum();
@@ -143,6 +143,7 @@ FUNCTION select_item ( integer sel ) {
 	if ( sel != 2 ) deselect_item# = 2;
 	if ( sel != 3 ) deselect_item# = 3;
 	select_item# = sel;
+	save_select = sel;
 }
 FUNCTION inc_time ( signed_integer inc ) {
 	signed_integer m;
