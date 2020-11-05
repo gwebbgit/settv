@@ -46,7 +46,11 @@ Comments:
 
 #DEFINE_CONSTANT UPDATE_INTERVAL 200	//200=2seconds refresh for h/m counter
 #DEFINE_CONSTANT MAX_HISTORY 10
-#DEFINE_CONSTANT MAXLEN_HISTORY_ITEM 20  // MAX_HISTORY * MAXLEN_HISTORY_ITEM must be less than the output string (system limited 255)
+#DEFINE_CONSTANT MAXLEN_HISTORY_ITEM 25  // MAX_HISTORY * (MAXLEN_HISTORY_ITEM+1 for CR) must be less than the output string (system limited 255)
+					// 0        1         2
+					// 1234567890123456789012345 <-- MAXLEN_HISTORY_ITEM
+					// SLEEP: 18:03 (12.5...     examples
+					// SLEEP: 18:03 (12.5)
 
 DIGITAL_INPUT
 	sleep_pr,
@@ -80,14 +84,19 @@ NONVOLATILE INTEGER
 	i_start_h, i_start_m, i_start_s, save_select;
 NONVOLATILE STRING
 	s_history[MAX_HISTORY][MAXLEN_HISTORY_ITEM];
+INTEGER Dur_dec;
+SIGNED_INTEGER Dur_h;
 
+//
+// Outputs history string.
+//
 FUNCTION remake_history_string() {
 	integer i;
 	string s[255];
 	s = "";
 	for ( i = 1 to MAX_HISTORY ) {
 		if ( s_history[i] = "" ) break; //end of list
-		s = s + s_history[i] + "\n";
+		s = s + s_history[i] + "\r";
 	}
 
 	/* Chop trailing newline, if any */
@@ -100,6 +109,26 @@ FUNCTION remake_history_string() {
 
 }
 
+//
+// Appends duration tag string to specified history item.
+// 
+FUNCTION append_duration ( integer pos ) {
+	/* Item doesn't exist? */
+	if ( pos < 1 || pos > MAX_HISTORY ) return;
+
+	/* Append to item */
+	if ( Dur_dec = 0 ) {
+		MakeString ( s_history[pos], "%s (%d)", s_history[pos], Dur_h );
+	} else {
+		MakeString ( s_history[pos], "%s (%d.%u)", s_history[pos], Dur_h, Dur_dec );
+	}
+
+}
+
+//
+// Adds specified history item string to history array
+// and updates the output string.
+//
 FUNCTION add_history ( string s ) {
 	integer i, eol;
 
@@ -117,6 +146,9 @@ FUNCTION add_history ( string s ) {
 			}
 		}
 	}
+
+	/* Append duration to prior event */
+	append_duration ( eol - 1 );
 
 	/* Shift list if full */
 	if ( eol > MAX_HISTORY ) {
@@ -144,9 +176,12 @@ FUNCTION set_start_now() {
 	duration_unit$ = "hr";
 }
 
-FUNCTION update_times() {	//updates TOD clocks and duration fields
-	integer h, m, s, dec;
-	signed_integer dur_h;
+//
+// Regular periodic call to update TOD clocks and duration fields outputs,
+// as well as Duration globals (Dur_h, Dur_dec).
+//
+FUNCTION update_times() {	
+	integer h, m, s;
 	h = GetHourNum();
 	m = GetMinutesNum();
 	s = GetSecondsNum();
@@ -155,9 +190,6 @@ FUNCTION update_times() {	//updates TOD clocks and duration fields
 	/* Time of Day and Date */
 	MakeString ( tod$, "%u:%02u", h, m );
 	MakeString ( date$, "%s %s %u, %u", Left(Day(), 3), Left(Month(), 3), GetDateNum(), GetYearNum() );
-
-	/* Skip duration if not running */
-	if ( select_item# = 3 || select_item# = 0 ) return;
 
 	/* Wrap properly */
 	if ( s < i_start_s ) {
@@ -175,25 +207,29 @@ FUNCTION update_times() {	//updates TOD clocks and duration fields
 		/* m is before start m; check 12 hours either way */
 		if ( i_start_m - m < 12 ) {
 			/* Within 12 hours earlier: time duration from m till i_start_m */
-			dur_h = 0; //FIXME
-			dec = 0; //FIXME
-			Trace ( ">>>dur_h within 12 hours earlier... FIXME\n" );
+			Dur_h = 0; //FIXME
+			Dur_dec = 0; //FIXME
+			Trace ( ">>>Dur_h within 12 hours earlier... FIXME\n" );
 
 
 
 		} else {
 			/* Within 12 hours later, must be after midnight: add 24 to h */
 			//FIXME h = h + 24;
-			Trace ( ">>>dur_h else within 12 hours later, must be after midnight; add 24 to h... FIXME\n" );
+			Trace ( ">>>Dur_h else within 12 hours later, must be after midnight; add 24 to h... FIXME\n" );
 		}
 	}
 
 	/* Get decimal */
-	dur_h = h - i_start_h;
-	dec = (m-i_start_m) / 6; //60 shifted 1 decimal place
-	Trace ( "\tm=%u:%d, i_start_m=%u  dur_h=%u:%d  dec=%u\n", m,m, i_start_m, dur_h,dur_h, dec );
-	MakeString ( duration_h$, "%d.%u", dur_h, dec );
-	duration_unit$ = "hr";
+	Dur_h = h - i_start_h;
+	Dur_dec = (m-i_start_m) / 6; //60 shifted 1 decimal place
+	Trace ( "\tm=%u:%d, i_start_m=%u  Dur_h=%u:%d  Dur_dec=%u\n", m,m, i_start_m, Dur_h,Dur_h, Dur_dec );
+
+	/* Output Duration only if in Sleep or Wake (not Off) */
+	if ( select_item# = 1 || select_item# = 2 ) {
+		MakeString ( duration_h$, "%d.%u", Dur_h, Dur_dec );
+		duration_unit$ = "hr";
+	}
 }
 
 FUNCTION select_item ( integer sel ) {
@@ -268,6 +304,12 @@ PUSH time_dec_pr {
 
 }
 function Main() {
+
+	/* Init globals */
+	Dur_h = 0;
+	Dur_dec = 0;
+
+	/* Recall status and run main update loop */
 	WaitForInitializationComplete();
 	if ( save_select > 0 ) select_item ( save_select ); //recall selection from NVRAM
 	while ( 1 ) {

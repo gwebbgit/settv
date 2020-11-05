@@ -1,0 +1,19 @@
+Data structures in Baby Timer
+
+
+History (example):
+current tod$ is "10:05"
+
+s_history[10]:
+
+s_history[1] = "WAKE: 05:58 (3.5)"	<--duration till next item
+s_history[2] = "SLEEP: 09:28 (0.6)"	<--duration till next item
+s_history[3] = "WAKE: 10:02"    <-- update_times appends " (0.1..."
+s_history[4] = ""
+s_history[5] = ""
+s_history[6] = ""
+s_history[7] = ""
+s_history[8] = ""
+
+inc_time() must update items #2 AND #3.
+
