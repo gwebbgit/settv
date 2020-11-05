@@ -45,6 +45,8 @@ Comments:
 */
 
 #DEFINE_CONSTANT UPDATE_INTERVAL 200	//200=2seconds refresh for h/m counter
+#DEFINE_CONSTANT MAX_HISTORY 10
+#DEFINE_CONSTANT MAXLEN_HISTORY_ITEM 20  // MAX_HISTORY * MAXLEN_HISTORY_ITEM must be less than the output string (system limited 255)
 
 DIGITAL_INPUT
 	sleep_pr,
@@ -66,7 +68,8 @@ STRING_OUTPUT
 	duration_title$,
 	duration_h$,
 	duration_unit$,
-	date$
+	date$,
+	history$
 	;
 ANALOG_OUTPUT
 	select_item#,
@@ -75,6 +78,61 @@ ANALOG_OUTPUT
 
 NONVOLATILE INTEGER
 	i_start_h, i_start_m, i_start_s, save_select;
+NONVOLATILE STRING
+	s_history[MAX_HISTORY][MAXLEN_HISTORY_ITEM];
+
+FUNCTION remake_history_string() {
+	integer i;
+	string s[255];
+	s = "";
+	for ( i = 1 to MAX_HISTORY ) {
+		if ( s_history[i] = "" ) break; //end of list
+		s = s + s_history[i] + "\n";
+	}
+
+	/* Chop trailing newline, if any */
+	if ( Len(s) > 0 ) {
+		s = Left ( s, Len(s)-1 );
+	}
+
+	/* Output string */
+	history$ = s;
+
+}
+
+FUNCTION add_history ( string s ) {
+	integer i, eol;
+
+	/* Find end of list (first empty item) */
+	/* First see if list if full (check last item), since it usually will be */
+	if ( s_history[MAX_HISTORY] <> "" ) {
+		/* List is full */
+		eol = MAX_HISTORY + 1;
+	} else {
+		for ( i = 1 to MAX_HISTORY ) {
+			if ( s_history[i] = "" ) {
+				/* End of list */
+				eol = i;
+				break;
+			}
+		}
+	}
+
+	/* Shift list if full */
+	if ( eol > MAX_HISTORY ) {
+		for ( i = 2 to MAX_HISTORY ) {
+			s_history[i-1] = s_history[i];
+		}
+		s_history[MAX_HISTORY] = "";
+		eol = MAX_HISTORY;
+	}
+
+	/* Add new entry */
+	s_history[eol] = s;
+
+	/* Update output string */
+	remake_history_string();
+}
 
 FUNCTION set_start_now() {
 	i_start_h = GetHourNum();
@@ -173,22 +231,31 @@ FUNCTION inc_time ( signed_integer inc ) {
 }
 
 PUSH sleep_pr {
+	string s[13];
 	select_item ( 1 );
 	since_title$ = "SLEEPING SINCE";
 	set_start_now();
+	MakeString ( s, "SLEEP: %u:%02u", i_start_h, i_start_m );
+	add_history ( s );
 }
 PUSH wake_pr {
+	string s[12];
 	select_item ( 2 );
 	since_title$ = "AWAKE SINCE";
 	set_start_now();
+	MakeString ( s, "WAKE: %u:%02u", i_start_h, i_start_m );
+	add_history ( s );
 }
 PUSH off_pr {
+	string s[10];
 	select_item ( 3 );
 	since_title$ = "";
 	since_time$ = "";
 	duration_title$ = "";
 	duration_h$ = "";
 	duration_unit$ = "";
+	MakeString ( s, "OFF: %u:%02u", GetHourNum(), GetMinutesNum() );
+	add_history ( s );
 	Delay ( 100 );
 	deselect_item# = 3;  //darken hiliting when off
 }
