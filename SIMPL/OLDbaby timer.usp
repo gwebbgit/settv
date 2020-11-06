@@ -1,0 +1,285 @@
+/*******************************************************************************************
+  SIMPL+ Module Information
+  (Fill in comments below)
+*******************************************************************************************/
+/*
+Dealer Name:
+System Name: baby timer for sleep/wake/TOD
+System Number:
+Programmer: GW
+Comments:
+
+ + TODO: if duration is negative (start time is in future), then duration should show
+   negative, not 23:55 (wrapped) or whatever.
+   Actually this problem is worse than that...more complicated; needs fixing.  FIXME
+
+*/
+
+/*******************************************************************************************
+  Compiler Directives
+  (Uncomment and declare compiler directives as needed)
+*******************************************************************************************/
+// #ENABLE_DYNAMIC
+// #SYMBOL_NAME ""
+// #HINT ""
+// #DEFINE_CONSTANT
+// #CATEGORY "" 
+// #PRINT_TO_TRACE
+// #DIGITAL_EXPAND 
+// #ANALOG_SERIAL_EXPAND 
+// #OUTPUT_SHIFT 
+// #HELP_PDF_FILE ""
+#DEFAULT_VOLATILE
+#ENABLE_STACK_CHECKING
+
+#ENABLE_TRACE
+
+// #ENCODING_ASCII
+// #ENCODING_UTF16
+// #ENCODING_INHERIT_FROM_PARENT
+// #ENCODING_INHERIT_FROM_PROGRAM
+/*
+#HELP_BEGIN
+   (add additional lines of help lines)
+#HELP_END
+*/
+
+#DEFINE_CONSTANT UPDATE_INTERVAL 200	//200=2seconds refresh for h/m counter
+#DEFINE_CONSTANT MAX_HISTORY 10
+#DEFINE_CONSTANT MAXLEN_HISTORY_ITEM 20  // MAX_HISTORY * MAXLEN_HISTORY_ITEM must be less than the output string (system limited 255)
+
+DIGITAL_INPUT
+	sleep_pr,
+	wake_pr,
+	off_pr,
+	time_inc_pr,
+	time_dec_pr
+	;
+
+ANALOG_INPUT
+	arg1,
+	arg2
+	;
+
+STRING_OUTPUT
+	tod$,
+	since_title$,
+	since_time$,
+	duration_title$,
+	duration_h$,
+	duration_unit$,
+	date$,
+	history$
+	;
+ANALOG_OUTPUT
+	select_item#,
+	deselect_item#
+	;
+
+NONVOLATILE INTEGER
+	i_start_h, i_start_m, i_start_s, save_select;
+NONVOLATILE STRING
+	s_history[MAX_HISTORY][MAXLEN_HISTORY_ITEM];
+
+FUNCTION remake_history_string() {
+	integer i;
+	string s[255];
+	s = "";
+	for ( i = 1 to MAX_HISTORY ) {
+		if ( s_history[i] = "" ) break; //end of list
+		s = s + s_history[i] + "\n";
+	}
+
+	/* Chop trailing newline, if any */
+	if ( Len(s) > 0 ) {
+		s = Left ( s, Len(s)-1 );
+	}
+
+	/* Output string */
+	history$ = s;
+
+}
+
+FUNCTION add_history ( string s ) {
+	integer i, eol;
+
+	/* Find end of list (first empty item) */
+	/* First see if list if full (check last item), since it usually will be */
+	if ( s_history[MAX_HISTORY] <> "" ) {
+		/* List is full */
+		eol = MAX_HISTORY + 1;
+	} else {
+		for ( i = 1 to MAX_HISTORY ) {
+			if ( s_history[i] = "" ) {
+				/* End of list */
+				eol = i;
+				break;
+			}
+		}
+	}
+
+	/* Shift list if full */
+	if ( eol > MAX_HISTORY ) {
+		for ( i = 2 to MAX_HISTORY ) {
+			s_history[i-1] = s_history[i];
+		}
+		s_history[MAX_HISTORY] = "";
+		eol = MAX_HISTORY;
+	}
+
+	/* Add new entry */
+	s_history[eol] = s;
+
+	/* Update output string */
+	remake_history_string();
+}
+
+FUNCTION set_start_now() {
+	i_start_h = GetHourNum();
+	i_start_m = GetMinutesNum();
+	i_start_s = GetSecondsNum();
+	MakeString ( since_time$, "%u:%02u", i_start_h, i_start_m);
+	duration_title$ = "DURATION";
+	duration_h$ = "0";
+	duration_unit$ = "hr";
+}
+
+FUNCTION update_times() {	//updates TOD clocks and duration fields
+	integer h, m, s, dec;
+	signed_integer dur_h;
+	h = GetHourNum();
+	m = GetMinutesNum();
+	s = GetSecondsNum();
+	Trace ( "update_times()...\n" );
+
+	/* Time of Day and Date */
+	MakeString ( tod$, "%u:%02u", h, m );
+	MakeString ( date$, "%s %s %u, %u", Left(Day(), 3), Left(Month(), 3), GetDateNum(), GetYearNum() );
+
+	/* Skip duration if not running */
+	if ( select_item# = 3 || select_item# = 0 ) return;
+
+	/* Wrap properly */
+	if ( s < i_start_s ) {
+		s = s + 60;
+		m = m - 1;
+	}
+	if ( m < i_start_m ) {
+		m = m + 60;
+		h = h - 1;
+	}
+	if ( h < i_start_h ) {
+		h = h + 24;
+	}
+	if ( m < i_start_m ) {
+		/* m is before start m; check 12 hours either way */
+		if ( i_start_m - m < 12 ) {
+			/* Within 12 hours earlier: time duration from m till i_start_m */
+			dur_h = 0; //FIXME
+			dec = 0; //FIXME
+			Trace ( ">>>dur_h within 12 hours earlier... FIXME\n" );
+
+
+
+		} else {
+			/* Within 12 hours later, must be after midnight: add 24 to h */
+			//FIXME h = h + 24;
+			Trace ( ">>>dur_h else within 12 hours later, must be after midnight; add 24 to h... FIXME\n" );
+		}
+	}
+
+	/* Get decimal */
+	dur_h = h - i_start_h;
+	dec = (m-i_start_m) / 6; //60 shifted 1 decimal place
+	Trace ( "\tm=%u:%d, i_start_m=%u  dur_h=%u:%d  dec=%u\n", m,m, i_start_m, dur_h,dur_h, dec );
+	MakeString ( duration_h$, "%d.%u", dur_h, dec );
+	duration_unit$ = "hr";
+}
+
+FUNCTION select_item ( integer sel ) {
+	if ( sel != 1 ) deselect_item# = 1;
+	if ( sel != 2 ) deselect_item# = 2;
+	if ( sel != 3 ) deselect_item# = 3;
+	select_item# = sel;
+	save_select = sel;
+}
+FUNCTION inc_time ( signed_integer inc ) {
+	signed_integer m;
+	m = i_start_m + inc;
+	Trace ( "inc_time(%d) m=%d i_start_h=%u, i_start_m=%u,  m S/ 60=%u  m%60=%u m%60=%d\n", inc, m, i_start_h, i_start_m, m S/ 60, m%60, m%60 );
+
+	/* Under/overflow m */
+	i_start_h = i_start_h + ( m S/ 60 );  //signed division
+	i_start_h = i_start_h % 24;
+	while ( m < 0 ) {   //apparently MOD (%) does not work correctly for negative numbers, so mod negative numbers manually
+		Trace ( "\t\tm=m+60 (m=%u:%d)\n", m,m );
+		m = m + 60;  //shift 60 minutes forward
+		i_start_h = i_start_h - 1;
+		if ( i_start_h < 0 ) i_start_h = 23; //wrap to 23 (assuming i_start_h was positive to begin with)
+		Trace ( "\t\t\ti_start_h <- %u:%d\n", i_start_h, i_start_h );
+	}
+	m = m % 60; //mod positive numbers
+	Trace ( "\t\tm % 60 = (%u:%d)\n", m,m );
+	i_start_m = m;
+	Trace ( "\tnewh=%u newm=%u, m=%u m=%d\n", i_start_h, i_start_m, m,m );
+	m = m % 60;
+	Trace ( "\tm=%u m=%d\n", m,m );
+
+	/* Update affected fields */
+	MakeString ( since_time$, "%u:%02u", i_start_h, i_start_m);
+	update_times();
+}
+
+PUSH sleep_pr {
+	string s[13];
+	select_item ( 1 );
+	since_title$ = "SLEEPING SINCE";
+	set_start_now();
+	MakeString ( s, "SLEEP: %u:%02u", i_start_h, i_start_m );
+	add_history ( s );
+}
+PUSH wake_pr {
+	string s[12];
+	select_item ( 2 );
+	since_title$ = "AWAKE SINCE";
+	set_start_now();
+	MakeString ( s, "WAKE: %u:%02u", i_start_h, i_start_m );
+	add_history ( s );
+}
+PUSH off_pr {
+	string s[10];
+	select_item ( 3 );
+	since_title$ = "";
+	since_time$ = "";
+	duration_title$ = "";
+	duration_h$ = "";
+	duration_unit$ = "";
+	MakeString ( s, "OFF: %u:%02u", GetHourNum(), GetMinutesNum() );
+	add_history ( s );
+	Delay ( 100 );
+	deselect_item# = 3;  //darken hiliting when off
+}
+PUSH time_inc_pr {
+	inc_time ( 10 );
+
+}
+PUSH time_dec_pr {
+	inc_time ( -10 );
+
+}
+function Main() {
+	WaitForInitializationComplete();
+	if ( save_select > 0 ) select_item ( save_select ); //recall selection from NVRAM
+	while ( 1 ) {
+		update_times();
+		Delay ( UPDATE_INTERVAL );
+	}
+}
+CHANGE arg1
+CHANGE arg2 {
+	signed_integer r1;
+	integer r2;
+	r1 = arg1 MOD arg2;
+	r2 = arg1 MOD arg2;
+	Trace ( "(%u:%d) % (%u:%d) = (%u:%d)(%u:%d)\n", arg1,arg1, arg2,arg2, r1,r1, r2,r2 );
+}
