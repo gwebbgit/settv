@@ -46,7 +46,11 @@ Comments:
 
 #DEFINE_CONSTANT UPDATE_INTERVAL 200	//200=2seconds refresh for h/m counter
 #DEFINE_CONSTANT MAX_HISTORY 10
-#DEFINE_CONSTANT MAXLEN_HISTORY_ITEM 20  // MAX_HISTORY * MAXLEN_HISTORY_ITEM must be less than the output string (system limited 255)
+#DEFINE_CONSTANT MAXLEN_HISTORY_ITEM 25  // MAX_HISTORY * (MAXLEN_HISTORY_ITEM+1 for CR) must be less than the output string (system limited 255)
+					// 0        1         2
+					// 1234567890123456789012345 <-- MAXLEN_HISTORY_ITEM
+					// SLEEP: 18:03 (12.5...     examples
+					// SLEEP: 18:03 (12.5)
 
 DIGITAL_INPUT
 	sleep_pr,
@@ -76,18 +80,42 @@ ANALOG_OUTPUT
 	deselect_item#
 	;
 
-NONVOLATILE INTEGER
-	i_start_h, i_start_m, i_start_s, save_select;
-NONVOLATILE STRING
-	s_history[MAX_HISTORY][MAXLEN_HISTORY_ITEM];
+STRUCTURE time_entry {
+	integer h, m, s;
+	string dur[5];  //examples: "-12.0"  "-12", "4", "4.0", "4.1"  (text signed numbers with optional one-place decimal)
+	string type[5];  // "SLEEP" | "WAKE" | "OFF" | ""
+};
 
+NONVOLATILE INTEGER
+	i_start_h, i_start_m, i_start_s, save_select, i_curr;
+NONVOLATILE STRING
+	s_history[MAX_HISTORY][MAXLEN_HISTORY_ITEM],
+	Curr_Dur[5];   // e.g. "-12.1" or "12.0"
+NONVOLATILE time_entry
+	TE[MAX_HISTORY];
+//SIGNED_INTEGER Dur_h;  //DEPRECATING...
+//INTEGER Dur_dec;  //DEPRECATING...
+
+//
+// Outputs history string.
+//
 FUNCTION remake_history_string() {
 	integer i;
 	string s[255];
 	s = "";
-	for ( i = 1 to MAX_HISTORY ) {
-		if ( s_history[i] = "" ) break; //end of list
-		s = s + s_history[i] + "\n";
+	append_flag = 0;
+
+	for ( i = 1 to i_curr ) {
+		
+		/* Current entry: append duration dynamically */
+		/* (also guard against reading past array max) */
+		if ( i = i_curr || i=MAX_HISTORY ) {
+			/* Current (latest) history item: append duration dynamically */
+			MakeString ( s, "%s%s: %u:%u %s (%d.%u...\r", s, TE[i].type, TE[i].h, TE[i].m, Dur_h, Dur_dec );
+		} else {
+			/* Regular (non-current) item: use structure value */
+			MakeString ( s, "%s%s: %u:%u %s (%s)\r", s, TE[i].type, TE[i].h, TE[i].m, TE[i].dur );
+		}
 	}
 
 	/* Chop trailing newline, if any */
@@ -100,35 +128,108 @@ FUNCTION remake_history_string() {
 
 }
 
-FUNCTION add_history ( string s ) {
-	integer i, eol;
+//
+// Appends duration tag string to specified history item
+// and updates history string.
+// 
+FUNCTION append_duration ( integer pos ) {
+//DEPRECATED???
+	/* Item doesn't exist? */
+	if ( pos < 1 || pos > MAX_HISTORY ) return;
 
-	/* Find end of list (first empty item) */
-	/* First see if list if full (check last item), since it usually will be */
-	if ( s_history[MAX_HISTORY] <> "" ) {
-		/* List is full */
-		eol = MAX_HISTORY + 1;
+	/* Append to item */
+	if ( Dur_dec = 0 ) {
+		/* No decimal place */
+		MakeString ( s_history[pos], "%s (%d)", s_history[pos], Dur_h );
+
 	} else {
-		for ( i = 1 to MAX_HISTORY ) {
+		/* Decimal place */
+		MakeString ( s_history[pos], "%s (%d.%u)", s_history[pos], Dur_h, Dur_dec );
+	}
+	remake_history_string();
+}
+
+//
+// Modifies 2nd-to-last history string to change its duration tag,
+// if it exists, to the specified new duration string.
+// and updates the output history string.
+//
+FUNCTION change_2ndlast_history_duration ( signed_integer inc ) {
+	integer i, pos, pos2, pos3;
+	signed_integer olddurd;  //olddurd e.g. -121 for -12.1 (multiplied by 10)
+
+	/* No 2nd-to-last entry (fewer than 2)? */
+	if ( s_history[2] = "" ) return;
+
+	/* Find 2nd-to-last pos */
+	/* List is full? */
+	if ( s_history[MAX_HISTORY] <> "" ) {
+		/* Full list: use max - 1 */
+		pos = MAX_HISTORY - 1;
+	} else {
+		/* Partial list: find last entry */
+		/* (already know list has at least 2 entries, so start at 3) */
+		for ( i = 3 to MAX_HISTORY ) {
 			if ( s_history[i] = "" ) {
 				/* End of list */
-				eol = i;
+				pos = i - 2;
 				break;
 			}
 		}
 	}
 
+	/* Recalc prior dur */
+	
+
+
+	/* Rewrite pos item starting at the parenthesis */
+	/* Example:  SLEEP: 15:00 (1.6) */
+	pos2 = Find ( "(", s_history[pos] );  //parens
+	if ( pos2 = 0 ) {
+		/* Error: duration not found on item */
+		print ( "Error: baby timer.usp: change_2ndlast_history_duration(): duration not found on 2nd to last item.\n" );
+		return;
+	}
+	pos3 = Find ( ".", s_history[pos], pos2 ); //decimal point
+
+	/* Get old dur (times ten; one decimal place, shifted to integer) */
+	if ( pos3 = 0 ) {
+		/* No decimal found; add a zero */
+		olddur = AToI ( Left(s_history[pos],pos2) );
+	} else {
+		//olddur = AToI ( Left(s_history[pos],pos2) + Left(s_history[pos],pos3) );
+	}
+
+	/* Chop from right after the parens start, and append from there */
+	//MakeString ( s_history[pos], "%s%d)", Left ( s_history[pos], pos2 ), olddur+inc
+	
+	remake_history_string();
+}
+
+//
+// Adds specified history item string to history array
+// and updates the output string.
+//
+//FUNCTION add_history ( string s ) {
+FUNCTION add_start_history ( string newType ) {
+	integer i;
+
 	/* Shift list if full */
-	if ( eol > MAX_HISTORY ) {
+	if ( i_curr = MAX_HISTORY ) {
 		for ( i = 2 to MAX_HISTORY ) {
-			s_history[i-1] = s_history[i];
+			TE[i-1] = TE[i];
 		}
-		s_history[MAX_HISTORY] = "";
-		eol = MAX_HISTORY;
+		TE[MAX_HISTORY] = "";
+		//i_curr remains at MAX_HISTORY
 	}
 
 	/* Add new entry */
-	s_history[eol] = s;
+	s_history[i_curr] = s;
+	TE[i_curr].h = i_start_h;
+	TE[i_curr].m = i_start_m;
+	TE[i_curr].s = i_start_s;
+	TE[i_curr].type = newType;
+	TE[i_curr].dur = "";  //current dur will be updated dynamically during update_times()
 
 	/* Update output string */
 	remake_history_string();
@@ -144,56 +245,85 @@ FUNCTION set_start_now() {
 	duration_unit$ = "hr";
 }
 
-FUNCTION update_times() {	//updates TOD clocks and duration fields
-	integer h, m, s, dec;
+//
+// Calculates duration between specified two time entries.
+// Returns string duration (5 chars max, could be negative).
+//
+STRING_FUNCTION calc_duration ( time_entry te1, time_entry te2 ) {
+	integer h, m, s, dur_dec;
 	signed_integer dur_h;
+	string ret[5];
+
 	h = GetHourNum();
 	m = GetMinutesNum();
 	s = GetSecondsNum();
-	Trace ( "update_times()...\n" );
-
-	/* Time of Day and Date */
-	MakeString ( tod$, "%u:%02u", h, m );
-	MakeString ( date$, "%s %s %u, %u", Left(Day(), 3), Left(Month(), 3), GetDateNum(), GetYearNum() );
-
-	/* Skip duration if not running */
-	if ( select_item# = 3 || select_item# = 0 ) return;
+	Trace ( "calc_duration()...\n" );
 
 	/* Wrap properly */
-	if ( s < i_start_s ) {
-		s = s + 60;
-		m = m - 1;
+	if ( te2.s < te1.s ) {
+		te2.s = te2.s + 60;
+		te2.m = te2.m - 1;
 	}
-	if ( m < i_start_m ) {
-		m = m + 60;
-		h = h - 1;
+	if ( te2.m < te1.m ) {
+		te2.m = te2.m + 60;
+		te2.h = te2.h - 1;
 	}
-	if ( h < i_start_h ) {
-		h = h + 24;
+	if ( te2.h < te1.h ) {
+		te2.h = te2.h + 24;
 	}
-	if ( m < i_start_m ) {
+	if ( te2.m < te1.m ) {
 		/* m is before start m; check 12 hours either way */
-		if ( i_start_m - m < 12 ) {
-			/* Within 12 hours earlier: time duration from m till i_start_m */
+		if ( te1.m - te2.m < 12 ) {
+			/* Within 12 hours earlier: time duration from m till te1 */
 			dur_h = 0; //FIXME
-			dec = 0; //FIXME
+			dur_dec = 0; //FIXME
 			Trace ( ">>>dur_h within 12 hours earlier... FIXME\n" );
-
 
 
 		} else {
 			/* Within 12 hours later, must be after midnight: add 24 to h */
-			//FIXME h = h + 24;
-			Trace ( ">>>dur_h else within 12 hours later, must be after midnight; add 24 to h... FIXME\n" );
+			//FIXME te2.h = te2.h + 24;
+			Trace ( ">>>dur_h else within 12 hours later, must be after midnight; add 24 to te2.h... FIXME\n" );
 		}
 	}
 
 	/* Get decimal */
-	dur_h = h - i_start_h;
-	dec = (m-i_start_m) / 6; //60 shifted 1 decimal place
-	Trace ( "\tm=%u:%d, i_start_m=%u  dur_h=%u:%d  dec=%u\n", m,m, i_start_m, dur_h,dur_h, dec );
-	MakeString ( duration_h$, "%d.%u", dur_h, dec );
-	duration_unit$ = "hr";
+	dur_h = te2.h - te1.h;
+	dur_dec = (te2.m-te1.m) / 6; //60 shifted 1 decimal place
+	Trace ( "\tte2.m=%u:%d, te1.m=%u:%d  dur_h=%u:%d  dur_dec=%u\n", te2.m,te2.m, te1.m,te1.m, dur_h,dur_h, dur_dec );
+
+	MakeString ( ret, "%d%u", dur_h, dur_d );
+
+}
+
+//
+// Regular periodic call to update TOD clocks and duration fields outputs,
+// as well as Duration globals (Dur_h, Dur_dec).
+//
+FUNCTION update_times() {	
+	time_entry now;
+	now.h = GetHourNum();
+	now.m = GetMinutesNum();
+	now.s = GetSecondsNum();
+	Trace ( "update_times()...\n" );
+
+	/* Time of Day and Date */
+	MakeString ( tod$, "%u:%02u", now.h, now.m );
+	MakeString ( date$, "%s %s %u, %u", Left(Day(), 3), Left(Month(), 3), GetDateNum(), GetYearNum() );
+
+
+	/* Calc duration between current entry start time and now */
+	Curr_Dur = calc_duration ( TE[i_curr], now );
+
+	/* Output Duration only if in Sleep or Wake (not Off) */
+	if ( select_item# = 1 || select_item# = 2 ) {
+		//MakeString ( duration_h$, "%d.%u", Dur_h, Dur_dec );
+		duration_h$ = Curr_dur;
+		duration_unit$ = "hr";
+	}
+
+	/* Update current history duration, in any mode */
+	remake_history_string();
 }
 
 FUNCTION select_item ( integer sel ) {
@@ -203,6 +333,11 @@ FUNCTION select_item ( integer sel ) {
 	select_item# = sel;
 	save_select = sel;
 }
+
+//
+// Adjusts current sleep/wake start time by specified # of minutes (positive or negative).
+// Affects i_start_XXX, output fields, and history array.
+//
 FUNCTION inc_time ( signed_integer inc ) {
 	signed_integer m;
 	m = i_start_m + inc;
@@ -227,35 +362,42 @@ FUNCTION inc_time ( signed_integer inc ) {
 
 	/* Update affected fields */
 	MakeString ( since_time$, "%u:%02u", i_start_h, i_start_m);
-	update_times();
+	update_times();  //updates Dur_h and Dur_dec
+
+	/* Fix 2nd to last history duration tag */
+	change_2ndlast_history_duration ( inc );
+
 }
 
 PUSH sleep_pr {
-	string s[13];
+	//string s[13];
 	select_item ( 1 );
 	since_title$ = "SLEEPING SINCE";
 	set_start_now();
-	MakeString ( s, "SLEEP: %u:%02u", i_start_h, i_start_m );
-	add_history ( s );
+	//MakeString ( s, "SLEEP: %u:%02u", i_start_h, i_start_m );
+	//add_history ( s );
+	add_start_history ( "SLEEP" );
 }
 PUSH wake_pr {
-	string s[12];
+	//string s[12];
 	select_item ( 2 );
 	since_title$ = "AWAKE SINCE";
 	set_start_now();
-	MakeString ( s, "WAKE: %u:%02u", i_start_h, i_start_m );
-	add_history ( s );
+	//MakeString ( s, "WAKE: %u:%02u", i_start_h, i_start_m );
+	//add_history ( s );
+	add_start_history ( "SLEEP" );
 }
 PUSH off_pr {
-	string s[10];
+	//string s[10];
 	select_item ( 3 );
 	since_title$ = "";
 	since_time$ = "";
 	duration_title$ = "";
 	duration_h$ = "";
 	duration_unit$ = "";
-	MakeString ( s, "OFF: %u:%02u", GetHourNum(), GetMinutesNum() );
-	add_history ( s );
+	//MakeString ( s, "OFF: %u:%02u", GetHourNum(), GetMinutesNum() );
+	//add_history ( s );
+	add_start_history ( "OFF" );
 	Delay ( 100 );
 	deselect_item# = 3;  //darken hiliting when off
 }
@@ -268,8 +410,32 @@ PUSH time_dec_pr {
 
 }
 function Main() {
+
+	/* Init globals */
+	Dur_h = 0;
+	Dur_dec = 0;
+
+	/* Recall status */
 	WaitForInitializationComplete();
-	if ( save_select > 0 ) select_item ( save_select ); //recall selection from NVRAM
+	if ( save_select > 0 ) {
+		select_item ( save_select ); //recall selection from NVRAM
+		cswitch ( save_select ) {
+			case (1): {
+				since_title$ = "*SLEEPING SINCE";
+				MakeString ( since_time$, "%u:%02u", i_start_h, i_start_m);
+				duration_title$ = "*DURATION";
+				break;
+			}
+			case (2): {
+				since_title$ = "*AWAKE SINCE";
+				MakeString ( since_time$, "%u:%02u", i_start_h, i_start_m);
+				duration_title$ = "*DURATION";
+				break;
+			}
+		}
+	}
+	
+	/* Run main update loop */
 	while ( 1 ) {
 		update_times();
 		Delay ( UPDATE_INTERVAL );

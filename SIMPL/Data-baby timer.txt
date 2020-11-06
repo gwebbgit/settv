@@ -1,0 +1,52 @@
+Data structures in Baby Timer
+
+
+History (example):
+current tod$ is "10:05"
+
+s_history[10]:
+
+s_history[1] = "WAKE: 05:58 (3.5)"	<--duration till next item
+s_history[2] = "SLEEP: 09:28 (0.6)"	<--duration till next item
+s_history[3] = "WAKE: 10:02"    <-- update_times appends " (0.1..."
+s_history[4] = ""
+s_history[5] = ""
+s_history[6] = ""
+s_history[7] = ""
+s_history[8] = ""
+
+inc_time() must update items #2 AND #3.
+
+201105:  s_history[] deprecated; now using time_entry structure TE[]:
+	TE[].h		hour
+	TE[].m		min
+	TE[].s		sec  (used only for duration calculations; not displayed)
+	TE[].type	SLEEP|WAKE|OFF|""
+	TE[].dur   e.g. "-12.1"  or "1"; only 1 decimal place max; decimal place and decimal point optional; negative OK but unusual
+
+So...
+
+TE[1].h = 5
+TE[1].m = 58
+TE[1].s = 19
+TE[1].type = "WAKE"
+TE[1].dur = "3.5"
+
+TE[2].h = 9
+TE[2].m = 28
+TE[2].s = 13
+TE[2].type = "SLEEP"
+TE[2].dur = "0.6"
+
+TE[3].h = 10
+TE[3].m = 2
+TE[3].s = 49
+TE[3].type = "WAKE"
+TE[3].dur = ""
+
+TE[4].h = 0
+TE[4].m = 0
+TE[4].s = 0
+TE[4].type = ""
+TE[4].dur = ""
+

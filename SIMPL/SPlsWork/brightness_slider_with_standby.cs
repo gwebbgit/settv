@@ -30,9 +30,9 @@ namespace UserModule_BRIGHTNESS_SLIDER_WITH_STANDBY
             {
                 SplusExecutionContext __context__ = SplusThreadStartCode(__SignalEventArg__);
                 
-                __context__.SourceCodeLine = 58;
+                __context__.SourceCodeLine = 60;
                 SAVE_BRIGHTNESS__POUND__ = (ushort) ( BRIGHTNESSF__POUND__  .UshortValue ) ; 
-                __context__.SourceCodeLine = 59;
+                __context__.SourceCodeLine = 61;
                 Trace( "Setting Save_Brightness to {0:d}\r\n", (ushort)SAVE_BRIGHTNESS__POUND__) ; 
                 
                 
@@ -51,15 +51,15 @@ namespace UserModule_BRIGHTNESS_SLIDER_WITH_STANDBY
         {
             SplusExecutionContext __context__ = SplusThreadStartCode(__SignalEventArg__);
             
-            __context__.SourceCodeLine = 63;
+            __context__.SourceCodeLine = 65;
             if ( Functions.TestForTrue  ( ( Functions.BoolToInt ( SLIDER  .UshortValue < 10000 ))  ) ) 
                 { 
-                __context__.SourceCodeLine = 64;
+                __context__.SourceCodeLine = 66;
                 if ( Functions.TestForTrue  ( ( BACKLIGHT_IS_ONF  .Value)  ) ) 
                     { 
-                    __context__.SourceCodeLine = 66;
+                    __context__.SourceCodeLine = 68;
                     Functions.Pulse ( 10, BACKLIGHT_OFF ) ; 
-                    __context__.SourceCodeLine = 67;
+                    __context__.SourceCodeLine = 69;
                     Trace( "NEED TO SET RESTORE BRIGHTNESS TO {0:d}\r\n", (ushort)SAVE_BRIGHTNESS__POUND__) ; 
                     } 
                 
@@ -67,12 +67,12 @@ namespace UserModule_BRIGHTNESS_SLIDER_WITH_STANDBY
             
             else 
                 {
-                __context__.SourceCodeLine = 69;
+                __context__.SourceCodeLine = 71;
                 if ( Functions.TestForTrue  ( ( Functions.Not( BACKLIGHT_IS_ONF  .Value ))  ) ) 
                     { 
-                    __context__.SourceCodeLine = 71;
+                    __context__.SourceCodeLine = 73;
                     Functions.Pulse ( 10, BACKLIGHT_ON ) ; 
-                    __context__.SourceCodeLine = 72;
+                    __context__.SourceCodeLine = 74;
                     Trace( "TURNING ON BACKLIGHT\r\n") ; 
                     } 
                 
