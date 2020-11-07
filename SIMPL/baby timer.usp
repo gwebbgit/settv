@@ -103,7 +103,6 @@ FUNCTION remake_history_string() {
 	integer i;
 	string s[255];
 	s = "";
-	append_flag = 0;
 
 	for ( i = 1 to i_curr ) {
 		
@@ -111,10 +110,10 @@ FUNCTION remake_history_string() {
 		/* (also guard against reading past array max) */
 		if ( i = i_curr || i=MAX_HISTORY ) {
 			/* Current (latest) history item: append duration dynamically */
-			MakeString ( s, "%s%s: %u:%u %s (%d.%u...\r", s, TE[i].type, TE[i].h, TE[i].m, Dur_h, Dur_dec );
+			MakeString ( s, "%s%s: %u:%u (%s...\r", s, TE[i].type, TE[i].h, TE[i].m, Curr_Dur );
 		} else {
 			/* Regular (non-current) item: use structure value */
-			MakeString ( s, "%s%s: %u:%u %s (%s)\r", s, TE[i].type, TE[i].h, TE[i].m, TE[i].dur );
+			MakeString ( s, "%s%s: %u:%u (%s)\r", s, TE[i].type, TE[i].h, TE[i].m, TE[i].dur );
 		}
 	}
 
@@ -126,27 +125,6 @@ FUNCTION remake_history_string() {
 	/* Output string */
 	history$ = s;
 
-}
-
-//
-// Appends duration tag string to specified history item
-// and updates history string.
-// 
-FUNCTION append_duration ( integer pos ) {
-//DEPRECATED???
-	/* Item doesn't exist? */
-	if ( pos < 1 || pos > MAX_HISTORY ) return;
-
-	/* Append to item */
-	if ( Dur_dec = 0 ) {
-		/* No decimal place */
-		MakeString ( s_history[pos], "%s (%d)", s_history[pos], Dur_h );
-
-	} else {
-		/* Decimal place */
-		MakeString ( s_history[pos], "%s (%d.%u)", s_history[pos], Dur_h, Dur_dec );
-	}
-	remake_history_string();
 }
 
 //
@@ -195,9 +173,9 @@ FUNCTION change_2ndlast_history_duration ( signed_integer inc ) {
 	/* Get old dur (times ten; one decimal place, shifted to integer) */
 	if ( pos3 = 0 ) {
 		/* No decimal found; add a zero */
-		olddur = AToI ( Left(s_history[pos],pos2) );
+		olddurd = AToI ( Left(s_history[pos],pos2) );
 	} else {
-		//olddur = AToI ( Left(s_history[pos],pos2) + Left(s_history[pos],pos3) );
+		//olddurd = AToI ( Left(s_history[pos],pos2) + Left(s_history[pos],pos3) );
 	}
 
 	/* Chop from right after the parens start, and append from there */
