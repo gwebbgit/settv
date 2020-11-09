@@ -87,7 +87,7 @@ STRUCTURE time_entry {
 };
 
 NONVOLATILE INTEGER
-	i_start_h, i_start_m, i_start_s, save_select, i_curr;
+	save_select, i_curr;
 NONVOLATILE STRING
 	s_history[MAX_HISTORY][MAXLEN_HISTORY_ITEM],
 	Curr_Dur[5];   // e.g. "-12.1" or "12.0"
@@ -195,25 +195,34 @@ FUNCTION add_start_history ( string newType ) {
 	/* Shift list if full */
 	if ( i_curr = MAX_HISTORY ) {
 		for ( i = 2 to MAX_HISTORY ) {
-			TE[i-1] = TE[i];
+			TE[i-1].h = TE[i].h;
+			TE[i-1].m = TE[i].m;
+			TE[i-1].s = TE[i].s;
+			TE[i-1].dur = TE[i].dur;
+			TE[i-1].type = TE[i].type;
 		}
-		TE[MAX_HISTORY] = "";
+		TE[MAX_HISTORY].type = "";
 		//i_curr remains at MAX_HISTORY
 	}
 
 	/* Add new entry */
 	s_history[i_curr] = s;
-	TE[i_curr].h = i_start_h;
-	TE[i_curr].m = i_start_m;
-	TE[i_curr].s = i_start_s;
+	TE[i_curr].h = GetHourNum();
+	TE[i_curr].m = GetMinutestNum();
+	TE[i_curr].s = GetSecondsNum();
 	TE[i_curr].type = newType;
 	TE[i_curr].dur = "";  //current dur will be updated dynamically during update_times()
+	MakeString ( since_time$, "%u:%02u", TE[i_curr].h, TE[i_curr].m );
+	duration_title$ = "DURATION";
+	duration_h$ = "0";
+	duration_unit$ = "hr";
 
 	/* Update output string */
 	remake_history_string();
 }
 
 FUNCTION set_start_now() {
+//DEPRECATED
 	i_start_h = GetHourNum();
 	i_start_m = GetMinutesNum();
 	i_start_s = GetSecondsNum();
@@ -317,8 +326,9 @@ FUNCTION select_item ( integer sel ) {
 // Affects i_start_XXX, output fields, and history array.
 //
 FUNCTION inc_time ( signed_integer inc ) {
+	integer i_start_h, i_start_m, i_start_s, 
 	signed_integer m;
-	m = i_start_m + inc;
+	m = TE[i_curr].m + inc;
 	Trace ( "inc_time(%d) m=%d i_start_h=%u, i_start_m=%u,  m S/ 60=%u  m%60=%u m%60=%d\n", inc, m, i_start_h, i_start_m, m S/ 60, m%60, m%60 );
 
 	/* Under/overflow m */
@@ -351,7 +361,7 @@ PUSH sleep_pr {
 	//string s[13];
 	select_item ( 1 );
 	since_title$ = "SLEEPING SINCE";
-	set_start_now();
+	//set_start_now();
 	//MakeString ( s, "SLEEP: %u:%02u", i_start_h, i_start_m );
 	//add_history ( s );
 	add_start_history ( "SLEEP" );
@@ -360,10 +370,10 @@ PUSH wake_pr {
 	//string s[12];
 	select_item ( 2 );
 	since_title$ = "AWAKE SINCE";
-	set_start_now();
+	//set_start_now();
 	//MakeString ( s, "WAKE: %u:%02u", i_start_h, i_start_m );
 	//add_history ( s );
-	add_start_history ( "SLEEP" );
+	add_start_history ( "WAKE" );
 }
 PUSH off_pr {
 	//string s[10];
@@ -400,13 +410,13 @@ function Main() {
 		cswitch ( save_select ) {
 			case (1): {
 				since_title$ = "*SLEEPING SINCE";
-				MakeString ( since_time$, "%u:%02u", i_start_h, i_start_m);
+				MakeString ( since_time$, "%u:%02u", TE[i_curr].h, TE[i_curr].m);
 				duration_title$ = "*DURATION";
 				break;
 			}
 			case (2): {
 				since_title$ = "*AWAKE SINCE";
-				MakeString ( since_time$, "%u:%02u", i_start_h, i_start_m);
+				MakeString ( since_time$, "%u:%02u", TE[i_curr].h, TE[i_curr].m);
 				duration_title$ = "*DURATION";
 				break;
 			}
