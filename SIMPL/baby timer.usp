@@ -210,7 +210,7 @@ FUNCTION add_start_history ( string newType ) {
 	string prev_dur[5];
 
 	/* Shift list if full */
-	if ( i_curr = MAX_HISTORY ) {
+	if ( i_curr >= MAX_HISTORY ) {
 		for ( i = 2 to MAX_HISTORY ) {
 			TE[i-1].h = TE[i].h;
 			TE[i-1].m = TE[i].m;
@@ -219,7 +219,7 @@ FUNCTION add_start_history ( string newType ) {
 			TE[i-1].type = TE[i].type;
 		}
 		TE[MAX_HISTORY].type = "";
-		//i_curr remains at MAX_HISTORY
+		i_curr = MAX_HISTORY; //limit if overflowed
 	} else {
 		/* Pick next slot in list */
 		i_curr = i_curr + 1;
