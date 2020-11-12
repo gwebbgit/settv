@@ -100,6 +100,8 @@ STRING
 NONVOLATILE time_entry
 	TE[MAX_HISTORY];
 time_entry Now;
+//SIGNED_INTEGER Dur_h;  //DEPRECATING...
+//INTEGER Dur_dec;  //DEPRECATING...
 
 
 
@@ -153,52 +155,61 @@ FUNCTION remake_history_string() {
 }
 
 //
-// Calculates duration between specified two time entries.
-// Returns string duration (5 chars max, could be negative).
+// Modifies 2nd-to-last history string to change its duration tag,
+// if it exists, to the specified new duration string.
+// and updates the output history string.
 //
-STRING_FUNCTION calc_duration ( time_entry te1, time_entry te2 ) {
-	integer dur_dec;
-	signed_integer dur_h;
-	string ret[5];
+FUNCTION change_2ndlast_history_duration ( signed_integer inc ) {
+//DEPRECATED
+	integer i, pos, pos2, pos3;
+	signed_integer olddurd;  //olddurd e.g. -121 for -12.1 (multiplied by 10)
 
-	Trace ( "calc_duration()...\n" );
+	/* No 2nd-to-last entry (fewer than 2)? */
+	if ( s_history[2] = "" ) return;
 
-	/* Wrap properly */
-	if ( te2.s < te1.s ) {
-		te2.s = te2.s + 60;
-		te2.m = te2.m - 1;
-	}
-	if ( te2.m < te1.m ) {
-		te2.m = te2.m + 60;
-		te2.h = te2.h - 1;
-	}
-	if ( te2.h < te1.h ) {
-		te2.h = te2.h + 24;
-	}
-	if ( te2.m < te1.m ) {
-		/* m is before start m; check 12 hours either way */
-		if ( te1.m - te2.m < 12 ) {
-			/* Within 12 hours earlier: time duration from m till te1 */
-			dur_h = 0; //FIXME
-			dur_dec = 0; //FIXME
-			Trace ( ">>>dur_h within 12 hours earlier... FIXME\n" );
-
-
-		} else {
-			/* Within 12 hours later, must be after midnight: add 24 to h */
-			//FIXME te2.h = te2.h + 24;
-			Trace ( ">>>dur_h else within 12 hours later, must be after midnight; add 24 to te2.h... FIXME\n" );
+	/* Find 2nd-to-last pos */
+	/* List is full? */
+	if ( s_history[MAX_HISTORY] <> "" ) {
+		/* Full list: use max - 1 */
+		pos = MAX_HISTORY - 1;
+	} else {
+		/* Partial list: find last entry */
+		/* (already know list has at least 2 entries, so start at 3) */
+		for ( i = 3 to MAX_HISTORY ) {
+			if ( s_history[i] = "" ) {
+				/* End of list */
+				pos = i - 2;
+				break;
+			}
 		}
 	}
 
-	/* Get decimal */
-	dur_h = te2.h - te1.h;
-	dur_dec = (te2.m-te1.m) / 6; //60 shifted 1 decimal place
-	Trace ( "\tte2.m=%u:%d, te1.m=%u:%d  dur_h=%u:%d  dur_dec=%u\n", te2.m,te2.m, te1.m,te1.m, dur_h,dur_h, dur_dec );
+	/* Recalc prior dur */
+	
 
-	MakeString ( ret, "%d.%u", dur_h, dur_dec );
-	return ( ret );
 
+	/* Rewrite pos item starting at the parenthesis */
+	/* Example:  SLEEP: 15:00 (1.6) */
+	pos2 = Find ( "(", s_history[pos] );  //parens
+	if ( pos2 = 0 ) {
+		/* Error: duration not found on item */
+		print ( "Error: baby timer.usp: change_2ndlast_history_duration(): duration not found on 2nd to last item.\n" );
+		return;
+	}
+	pos3 = Find ( ".", s_history[pos], pos2 ); //decimal point
+
+	/* Get old dur (times ten; one decimal place, shifted to integer) */
+	if ( pos3 = 0 ) {
+		/* No decimal found; add a zero */
+		olddurd = AToI ( Left(s_history[pos],pos2) );
+	} else {
+		//olddurd = AToI ( Left(s_history[pos],pos2) + Left(s_history[pos],pos3) );
+	}
+
+	/* Chop from right after the parens start, and append from there */
+	//MakeString ( s_history[pos], "%s%d)", Left ( s_history[pos], pos2 ), olddur+inc
+	
+	remake_history_string();
 }
 
 //
@@ -247,6 +258,55 @@ FUNCTION add_start_history ( string newType ) {
 
 	/* Update output string */
 	remake_history_string();
+}
+
+//
+// Calculates duration between specified two time entries.
+// Returns string duration (5 chars max, could be negative).
+//
+STRING_FUNCTION calc_duration ( time_entry te1, time_entry te2 ) {
+	integer dur_dec;
+	signed_integer dur_h;
+	string ret[5];
+
+	Trace ( "calc_duration()...\n" );
+
+	/* Wrap properly */
+	if ( te2.s < te1.s ) {
+		te2.s = te2.s + 60;
+		te2.m = te2.m - 1;
+	}
+	if ( te2.m < te1.m ) {
+		te2.m = te2.m + 60;
+		te2.h = te2.h - 1;
+	}
+	if ( te2.h < te1.h ) {
+		te2.h = te2.h + 24;
+	}
+	if ( te2.m < te1.m ) {
+		/* m is before start m; check 12 hours either way */
+		if ( te1.m - te2.m < 12 ) {
+			/* Within 12 hours earlier: time duration from m till te1 */
+			dur_h = 0; //FIXME
+			dur_dec = 0; //FIXME
+			Trace ( ">>>dur_h within 12 hours earlier... FIXME\n" );
+
+
+		} else {
+			/* Within 12 hours later, must be after midnight: add 24 to h */
+			//FIXME te2.h = te2.h + 24;
+			Trace ( ">>>dur_h else within 12 hours later, must be after midnight; add 24 to te2.h... FIXME\n" );
+		}
+	}
+
+	/* Get decimal */
+	dur_h = te2.h - te1.h;
+	dur_dec = (te2.m-te1.m) / 6; //60 shifted 1 decimal place
+	Trace ( "\tte2.m=%u:%d, te1.m=%u:%d  dur_h=%u:%d  dur_dec=%u\n", te2.m,te2.m, te1.m,te1.m, dur_h,dur_h, dur_dec );
+
+	MakeString ( ret, "%d.%u", dur_h, dur_dec );
+	return ( ret );
+
 }
 
 //

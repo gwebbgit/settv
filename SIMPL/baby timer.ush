@@ -50,12 +50,12 @@
   OutputList2SigType6=Serial
   OutputList2Cue7=date$
   OutputList2SigType7=Serial
-  OutputList2Cue8=history$
-  OutputList2SigType8=Serial
-  OutputList2Cue9=select_item/#
+  OutputList2Cue8=select_item/#
+  OutputList2SigType8=Analog
+  OutputList2Cue9=deselect_item/#
   OutputList2SigType9=Analog
-  OutputList2Cue10=deselect_item/#
-  OutputList2SigType10=Analog
+  OutputList2Cue10=history$[#]
+  OutputList2SigType10=Serial
   ParamCue1=[Reference Name]
   MinVariableInputs=5
   MaxVariableInputs=5
@@ -63,8 +63,8 @@
   MaxVariableInputsList2=2
   MinVariableOutputs=0
   MaxVariableOutputs=0
-  MinVariableOutputsList2=10
-  MaxVariableOutputsList2=10
+  MinVariableOutputsList2=19
+  MaxVariableOutputsList2=19
   MinVariableParams=0
   MaxVariableParams=0
   Expand=expand_separately
@@ -98,8 +98,4 @@
   H=1
   Tp=1
   NoS=False
-[END]
-[BEGIN]
-ObjTp=Status
-HeaderCompatible=False
 [END]
