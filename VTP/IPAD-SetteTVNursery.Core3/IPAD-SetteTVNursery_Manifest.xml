@@ -1,8 +1,8 @@
 <?xml version='1.0' encoding='ISO-8859-1' ?>
 <File Type='Manifest' Version='6.1.0' ObjectDisplayList='4'>
-<Project FileName='IPAD-SetteTVNursery.zip' Size='6406054' Build='20200612011930'>
+<Project FileName='IPAD-SetteTVNursery.zip' Size='6411128' Build='20201112001407'>
 <Sources>
-<Source FileName='IPAD-SetteTVNursery.xml' Size='538' Type='Application' Build='20200612011930' MinimumSGVersion='2.11.05.00' />
+<Source FileName='IPAD-SetteTVNursery.xml' Size='538' Type='Application' Build='20201112001407' MinimumSGVersion='2.11.05.00' />
 </Sources>
 </Project>
 </File>
