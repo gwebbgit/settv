@@ -230,7 +230,7 @@ FUNCTION add_start_history ( string newType ) {
 
 	/* Add permanent duration to previous item if any */
 	if ( i_curr > 1 ) {
-		prev_dur = calc_duration ( TE[i_curr], Now );
+		prev_dur = calc_duration ( TE[i_curr-1], Now );
 		TE[i_curr-1].dur = prev_dur;
 	}
 

@@ -237,7 +237,7 @@ namespace UserModule_BABY_TIMER
             if ( Functions.TestForTrue  ( ( Functions.BoolToInt ( _SplusNVRAM.I_CURR > 1 ))  ) ) 
                 { 
                 __context__.SourceCodeLine = 233;
-                PREV_DUR  .UpdateValue ( CALC_DURATION (  __context__ , _SplusNVRAM.TE[ _SplusNVRAM.I_CURR ], NOW)  ) ; 
+                PREV_DUR  .UpdateValue ( CALC_DURATION (  __context__ , _SplusNVRAM.TE[ (_SplusNVRAM.I_CURR - 1) ], NOW)  ) ; 
                 __context__.SourceCodeLine = 234;
                 _SplusNVRAM.TE [ (_SplusNVRAM.I_CURR - 1)] . DUR  .UpdateValue ( PREV_DUR  ) ; 
                 } 
