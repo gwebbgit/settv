@@ -156,7 +156,7 @@ FUNCTION remake_history_string() {
 // Calculates duration between specified two time entries.
 // Returns string duration (5 chars max, could be negative).
 //
-STRING_FUNCTION calc_duration ( time_entry te1, time_entry te2 ) {
+STRING_FUNCTION calc_duration ( time_entry te1, ByVal time_entry te2 ) {	//te2 must be ByVal since we munge it for our calcs
 	integer dur_dec;
 	signed_integer dur_h;
 	string ret[5];
@@ -211,6 +211,7 @@ FUNCTION add_start_history ( string newType ) {
 
 	/* Shift list if full */
 	if ( i_curr >= MAX_HISTORY ) {
+		/* Shift entry up */
 		for ( i = 2 to MAX_HISTORY ) {
 			TE[i-1].h = TE[i].h;
 			TE[i-1].m = TE[i].m;
@@ -224,7 +225,6 @@ FUNCTION add_start_history ( string newType ) {
 		/* Pick next slot in list */
 		i_curr = i_curr + 1;
 	}
-
 
 	update_Now();
 
