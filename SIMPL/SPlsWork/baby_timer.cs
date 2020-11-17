@@ -117,7 +117,7 @@ namespace UserModule_BABY_TIMER
             
             }
             
-        private CrestronString CALC_DURATION (  SplusExecutionContext __context__, TIME_ENTRY TE1 , TIME_ENTRY TE2 ) 
+        private CrestronString CALC_DURATION (  SplusExecutionContext __context__, TIME_ENTRY TE1 ,  TIME_ENTRY TE2 ) 
             { 
             ushort DUR_DEC = 0;
             
@@ -200,34 +200,34 @@ namespace UserModule_BABY_TIMER
             __context__.SourceCodeLine = 213;
             if ( Functions.TestForTrue  ( ( Functions.BoolToInt ( _SplusNVRAM.I_CURR >= 10 ))  ) ) 
                 { 
-                __context__.SourceCodeLine = 214;
+                __context__.SourceCodeLine = 215;
                 ushort __FN_FORSTART_VAL__1 = (ushort) ( 2 ) ;
                 ushort __FN_FOREND_VAL__1 = (ushort)10; 
                 int __FN_FORSTEP_VAL__1 = (int)1; 
                 for ( I  = __FN_FORSTART_VAL__1; (__FN_FORSTEP_VAL__1 > 0)  ? ( (I  >= __FN_FORSTART_VAL__1) && (I  <= __FN_FOREND_VAL__1) ) : ( (I  <= __FN_FORSTART_VAL__1) && (I  >= __FN_FOREND_VAL__1) ) ; I  += (ushort)__FN_FORSTEP_VAL__1) 
                     { 
-                    __context__.SourceCodeLine = 215;
-                    _SplusNVRAM.TE [ (I - 1)] . H = (ushort) ( _SplusNVRAM.TE[ I ].H ) ; 
                     __context__.SourceCodeLine = 216;
-                    _SplusNVRAM.TE [ (I - 1)] . M = (ushort) ( _SplusNVRAM.TE[ I ].M ) ; 
+                    _SplusNVRAM.TE [ (I - 1)] . H = (ushort) ( _SplusNVRAM.TE[ I ].H ) ; 
                     __context__.SourceCodeLine = 217;
-                    _SplusNVRAM.TE [ (I - 1)] . S = (ushort) ( _SplusNVRAM.TE[ I ].S ) ; 
+                    _SplusNVRAM.TE [ (I - 1)] . M = (ushort) ( _SplusNVRAM.TE[ I ].M ) ; 
                     __context__.SourceCodeLine = 218;
-                    _SplusNVRAM.TE [ (I - 1)] . DUR  .UpdateValue ( _SplusNVRAM.TE [ I] . DUR  ) ; 
+                    _SplusNVRAM.TE [ (I - 1)] . S = (ushort) ( _SplusNVRAM.TE[ I ].S ) ; 
                     __context__.SourceCodeLine = 219;
+                    _SplusNVRAM.TE [ (I - 1)] . DUR  .UpdateValue ( _SplusNVRAM.TE [ I] . DUR  ) ; 
+                    __context__.SourceCodeLine = 220;
                     _SplusNVRAM.TE [ (I - 1)] . TYPE  .UpdateValue ( _SplusNVRAM.TE [ I] . TYPE  ) ; 
-                    __context__.SourceCodeLine = 214;
+                    __context__.SourceCodeLine = 215;
                     } 
                 
-                __context__.SourceCodeLine = 221;
-                _SplusNVRAM.TE [ 10] . TYPE  .UpdateValue ( ""  ) ; 
                 __context__.SourceCodeLine = 222;
+                _SplusNVRAM.TE [ 10] . TYPE  .UpdateValue ( ""  ) ; 
+                __context__.SourceCodeLine = 223;
                 _SplusNVRAM.I_CURR = (ushort) ( 10 ) ; 
                 } 
             
             else 
                 { 
-                __context__.SourceCodeLine = 225;
+                __context__.SourceCodeLine = 226;
                 _SplusNVRAM.I_CURR = (ushort) ( (_SplusNVRAM.I_CURR + 1) ) ; 
                 } 
             
