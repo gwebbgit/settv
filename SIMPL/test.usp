@@ -156,31 +156,28 @@ FUNCTION remake_history_string() {
 // Calculates duration between specified two time entries.
 // Returns string duration (5 chars max, could be negative).
 //
-STRING_FUNCTION calc_duration ( time_entry te1, time_entry te2 ) {	//te2 must be ByVal since we munge it for our calcs
+STRING_FUNCTION calc_duration ( time_entry te1, ByVal time_entry te2 ) {	//te2 must be ByVal since we munge it for our calcs
 	integer dur_dec;
 	signed_integer dur_h;
 	string ret[5];
-	time_entry lt2;  //local copy of te2, so we don't munge the ByRef function arg
-			 //(Note: S+ "ByVal" prefix does not actually work for structures;
-			 //structures are passed by reference always, it seems)
 
 	Trace ( "calc_duration()...\n" );
 
 	/* Wrap properly */
-	if ( lt2.s < te1.s ) {
-		lt2.s = lt2.s + 60;
-		lt2.m = lt2.m - 1;
+	if ( te2.s < te1.s ) {
+		te2.s = te2.s + 60;
+		te2.m = te2.m - 1;
 	}
-	if ( lt2.m < te1.m ) {
-		lt2.m = lt2.m + 60;
-		lt2.h = lt2.h - 1;
+	if ( te2.m < te1.m ) {
+		te2.m = te2.m + 60;
+		te2.h = te2.h - 1;
 	}
-	if ( lt2.h < te1.h ) {
-		lt2.h = lt2.h + 24;
+	if ( te2.h < te1.h ) {
+		te2.h = te2.h + 24;
 	}
-	if ( lt2.m < te1.m ) {
+	if ( te2.m < te1.m ) {
 		/* m is before start m; check 12 hours either way */
-		if ( te1.m - lt2.m < 12 ) {
+		if ( te1.m - te2.m < 12 ) {
 			/* Within 12 hours earlier: time duration from m till te1 */
 			dur_h = 0; //FIXME
 			dur_dec = 0; //FIXME
@@ -189,17 +186,17 @@ STRING_FUNCTION calc_duration ( time_entry te1, time_entry te2 ) {	//te2 must be
 
 		} else {
 			/* Within 12 hours later, must be after midnight: add 24 to h */
-			//FIXME lt2.h = lt2.h + 24;
+			//FIXME te2.h = te2.h + 24;
 			Trace ( ">>>dur_h else within 12 hours later, must be after midnight; add 24 to te2.h... FIXME\n" );
 		}
 	}
 
 	/* Get decimal */
-	dur_h = lt2.h - te1.h;
-	dur_dec = (lt2.m-te1.m) / 6; //60 shifted 1 decimal place
-	Trace ( "\tlt2.m=%u:%d, te1.m=%u:%d  dur_h=%u:%d  dur_dec=%u\n", te2.m,te2.m, te1.m,te1.m, dur_h,dur_h, dur_dec );
+	dur_h = te2.h - te1.h;
+	dur_dec = (te2.m-te1.m) / 6; //60 shifted 1 decimal place
+	Trace ( "\tte2.m=%u:%d, te1.m=%u:%d  dur_h=%u:%d  dur_dec=%u\n", te2.m,te2.m, te1.m,te1.m, dur_h,dur_h, dur_dec );
 
-	MakeString ( ret, "%d.%u", dur_h, dur_dec );  //no need to format with leading zeros
+	MakeString ( ret, "%d.%u", dur_h, dur_dec );
 	return ( ret );
 
 }
@@ -408,11 +405,62 @@ function Main() {
 		Delay ( UPDATE_INTERVAL );
 	}
 }
+
+//
+// TEST/DEBUG FUNCTIONS
+//
+FUNCTION print_te ( string label, time_entry t ) {
+	Print ( "print_te(%s): %u:%02u:%02u {%s|%s}\n", label, t.h,t.m,t.s,  t.dur, t.type );
+}
+FUNCTION test_structure_noprefix ( time_entry t ) {
+	t.h = 9999;
+	t.m = 9999;
+	t.s = 9999;
+	t.dur = "ddddd";
+	t.type = "CRUPT";
+}
+//FUNCTION test_structure_passbyval ( ByVal time_entry t ) {
+FUNCTION test_structure_passbyval ( time_entry t ) {
+	time_entry lt;
+	print_te ( "\tt", t );
+	print_te ( "\tlt", lt );
+	lt.h = t.h;
+	lt.m = t.m;
+	lt.s = t.s;
+	lt.dur = t.dur;
+	lt.type = t.type;
+	print_te ( "\tt", t );
+	print_te ( "\tlt", lt );
+	lt.h = 9999;
+	lt.m = 9999;
+	lt.s = 9999;
+	lt.dur = "ddddd";
+	lt.type = "CRUPT";
+	print_te ( "\tt", t );
+	print_te ( "\tlt", lt );
+}
+
 CHANGE arg1
 CHANGE arg2 {
-	signed_integer r1;
-	integer r2;
-	r1 = arg1 MOD arg2;
-	r2 = arg1 MOD arg2;
-	Trace ( "(%u:%d) % (%u:%d) = (%u:%d)(%u:%d)\n", arg1,arg1, arg2,arg2, r1,r1, r2,r2 );
+	time_entry t1, t2;
+
+	/* Test ByVal */
+	print ( "--- Test noprefix/ByVal ---\n" );
+	print_te ( "t1", t1 );
+	print_te ( "t2", t2 );
+	test_structure_noprefix ( t1 );
+	test_structure_passbyval ( t2 );
+	print_te ( "t1", t1 );
+	print_te ( "t2", t2 );
+
+	print ( "--- End of test noprefix/ByVal ---\n" );
+
+
+
+
+	//signed_integer r1;
+	//integer r2;
+	//r1 = arg1 MOD arg2;
+	//r2 = arg1 MOD arg2;
+	//Trace ( "(%u:%d) % (%u:%d) = (%u:%d)(%u:%d)\n", arg1,arg1, arg2,arg2, r1,r1, r2,r2 );
 }
