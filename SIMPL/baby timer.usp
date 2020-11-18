@@ -166,6 +166,13 @@ STRING_FUNCTION calc_duration ( time_entry te1, time_entry te2 ) {	//te2 must be
 
 	Trace ( "calc_duration()...\n" );
 
+	/* Copy te2 for local use */
+	lt2.h = te2.h;
+	lt2.m = te2.m;
+	lt2.s = te2.s;
+	lt2.dur = te2.dur;
+	lt2.type = te2.type;
+
 	/* Wrap properly */
 	if ( lt2.s < te1.s ) {
 		lt2.s = lt2.s + 60;
