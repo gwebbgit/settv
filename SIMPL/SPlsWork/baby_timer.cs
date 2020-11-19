@@ -248,32 +248,32 @@ namespace UserModule_BABY_TIMER
             __context__.SourceCodeLine = 239;
             UPDATE_NOW (  __context__  ) ; 
             __context__.SourceCodeLine = 242;
+            _SplusNVRAM.TE [ _SplusNVRAM.I_CURR] . H = (ushort) ( NOW.H ) ; 
+            __context__.SourceCodeLine = 243;
+            _SplusNVRAM.TE [ _SplusNVRAM.I_CURR] . M = (ushort) ( NOW.M ) ; 
+            __context__.SourceCodeLine = 244;
+            _SplusNVRAM.TE [ _SplusNVRAM.I_CURR] . S = (ushort) ( NOW.S ) ; 
+            __context__.SourceCodeLine = 245;
+            _SplusNVRAM.TE [ _SplusNVRAM.I_CURR] . TYPE  .UpdateValue ( NEWTYPE  ) ; 
+            __context__.SourceCodeLine = 246;
+            _SplusNVRAM.TE [ _SplusNVRAM.I_CURR] . DUR  .UpdateValue ( ""  ) ; 
+            __context__.SourceCodeLine = 247;
+            MakeString ( SINCE_TIME__DOLLAR__ , "{0:d}:{1:d2}", (ushort)_SplusNVRAM.TE[ _SplusNVRAM.I_CURR ].H, (ushort)_SplusNVRAM.TE[ _SplusNVRAM.I_CURR ].M) ; 
+            __context__.SourceCodeLine = 248;
+            DURATION_TITLE__DOLLAR__  .UpdateValue ( "DURATION"  ) ; 
+            __context__.SourceCodeLine = 249;
+            DURATION_H__DOLLAR__  .UpdateValue ( "0"  ) ; 
+            __context__.SourceCodeLine = 250;
+            DURATION_UNIT__DOLLAR__  .UpdateValue ( "hr"  ) ; 
+            __context__.SourceCodeLine = 253;
             if ( Functions.TestForTrue  ( ( Functions.BoolToInt ( _SplusNVRAM.I_CURR > 1 ))  ) ) 
                 { 
-                __context__.SourceCodeLine = 243;
+                __context__.SourceCodeLine = 254;
                 PREV_DUR  .UpdateValue ( CALC_DURATION (  __context__ , _SplusNVRAM.TE[ (_SplusNVRAM.I_CURR - 1) ], _SplusNVRAM.TE[ _SplusNVRAM.I_CURR ])  ) ; 
-                __context__.SourceCodeLine = 244;
+                __context__.SourceCodeLine = 255;
                 _SplusNVRAM.TE [ (_SplusNVRAM.I_CURR - 1)] . DUR  .UpdateValue ( PREV_DUR  ) ; 
                 } 
             
-            __context__.SourceCodeLine = 248;
-            _SplusNVRAM.TE [ _SplusNVRAM.I_CURR] . H = (ushort) ( NOW.H ) ; 
-            __context__.SourceCodeLine = 249;
-            _SplusNVRAM.TE [ _SplusNVRAM.I_CURR] . M = (ushort) ( NOW.M ) ; 
-            __context__.SourceCodeLine = 250;
-            _SplusNVRAM.TE [ _SplusNVRAM.I_CURR] . S = (ushort) ( NOW.S ) ; 
-            __context__.SourceCodeLine = 251;
-            _SplusNVRAM.TE [ _SplusNVRAM.I_CURR] . TYPE  .UpdateValue ( NEWTYPE  ) ; 
-            __context__.SourceCodeLine = 252;
-            _SplusNVRAM.TE [ _SplusNVRAM.I_CURR] . DUR  .UpdateValue ( ""  ) ; 
-            __context__.SourceCodeLine = 253;
-            MakeString ( SINCE_TIME__DOLLAR__ , "{0:d}:{1:d2}", (ushort)_SplusNVRAM.TE[ _SplusNVRAM.I_CURR ].H, (ushort)_SplusNVRAM.TE[ _SplusNVRAM.I_CURR ].M) ; 
-            __context__.SourceCodeLine = 254;
-            DURATION_TITLE__DOLLAR__  .UpdateValue ( "DURATION"  ) ; 
-            __context__.SourceCodeLine = 255;
-            DURATION_H__DOLLAR__  .UpdateValue ( "0"  ) ; 
-            __context__.SourceCodeLine = 256;
-            DURATION_UNIT__DOLLAR__  .UpdateValue ( "hr"  ) ; 
             __context__.SourceCodeLine = 259;
             REMAKE_HISTORY_STRING (  __context__  ) ; 
             
