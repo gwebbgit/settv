@@ -240,7 +240,7 @@ FUNCTION add_start_history ( string newType ) {
 
 	/* Add permanent duration to previous item if any */
 	if ( i_curr > 1 ) {
-		prev_dur = calc_duration ( TE[i_curr-1], Now );
+		prev_dur = calc_duration ( TE[i_curr-1], TE[i_curr] );
 		TE[i_curr-1].dur = prev_dur;
 	}
 
@@ -339,7 +339,7 @@ FUNCTION inc_time ( signed_integer inc ) {
 
 	/* Update prior TE's duration, if prior TE exists */
 	if ( i_curr > 1 ) {
-		prev_dur = calc_duration ( TE[i_curr], Now );
+		prev_dur = calc_duration ( TE[i_curr-1], TE[i_curr] );
 		TE[i_curr - 1].dur = prev_dur;
 		trace ( "\tupdating TE[i_curr-1 (%u)].dur = {%s}\n", i_curr-1, prev_dur );
 	} else {
