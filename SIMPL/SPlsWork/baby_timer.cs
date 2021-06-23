@@ -132,7 +132,7 @@ namespace UserModule_BABY_TIMER
             
             
             __context__.SourceCodeLine = 167;
-            Trace( "calc_duration()...\r\n") ; 
+            /* Trace( "calc_duration()...\r\n") */ ; 
             __context__.SourceCodeLine = 170;
             LT2 . H = (ushort) ( TE2.H ) ; 
             __context__.SourceCodeLine = 171;
@@ -179,13 +179,13 @@ namespace UserModule_BABY_TIMER
                     __context__.SourceCodeLine = 193;
                     DUR_DEC = (ushort) ( 0 ) ; 
                     __context__.SourceCodeLine = 194;
-                    Trace( ">>>dur_h within 12 hours earlier... FIXME\r\n") ; 
+                    /* Trace( ">>>dur_h within 12 hours earlier... FIXME\r\n") */ ; 
                     } 
                 
                 else 
                     { 
                     __context__.SourceCodeLine = 200;
-                    Trace( ">>>dur_h else within 12 hours later, must be after midnight; add 24 to te2.h... FIXME\r\n") ; 
+                    /* Trace( ">>>dur_h else within 12 hours later, must be after midnight; add 24 to te2.h... FIXME\r\n") */ ; 
                     } 
                 
                 } 
@@ -195,7 +195,7 @@ namespace UserModule_BABY_TIMER
             __context__.SourceCodeLine = 206;
             DUR_DEC = (ushort) ( ((LT2.M - TE1.M) / 6) ) ; 
             __context__.SourceCodeLine = 207;
-            Trace( "\tlt2.m={0:d}:{1:d}, te1.m={2:d}:{3:d}  dur_h={4:d}:{5:d}  dur_dec={6:d}\r\n", (ushort)TE2.M, (short)TE2.M, (ushort)TE1.M, (short)TE1.M, (ushort)DUR_H, (short)DUR_H, (ushort)DUR_DEC) ; 
+            /* Trace( "\tlt2.m={0:d}:{1:d}, te1.m={2:d}:{3:d}  dur_h={4:d}:{5:d}  dur_dec={6:d}\r\n", (ushort)TE2.M, (short)TE2.M, (ushort)TE1.M, (short)TE1.M, (ushort)DUR_H, (short)DUR_H, (ushort)DUR_DEC) */ ; 
             __context__.SourceCodeLine = 209;
             MakeString ( RET , "{0:d}.{1:d}", (short)DUR_H, (ushort)DUR_DEC) ; 
             __context__.SourceCodeLine = 210;
@@ -285,7 +285,7 @@ namespace UserModule_BABY_TIMER
             __context__.SourceCodeLine = 267;
             UPDATE_NOW (  __context__  ) ; 
             __context__.SourceCodeLine = 268;
-            Trace( "update_times()...\r\n\ti_curr={0:d}\r\n", (ushort)_SplusNVRAM.I_CURR) ; 
+            /* Trace( "update_times()...\r\n\ti_curr={0:d}\r\n", (ushort)_SplusNVRAM.I_CURR) */ ; 
             __context__.SourceCodeLine = 271;
             MakeString ( TOD__DOLLAR__ , "{0:d}:{1:d2}", (ushort)NOW.H, (ushort)NOW.M) ; 
             __context__.SourceCodeLine = 272;
@@ -293,7 +293,7 @@ namespace UserModule_BABY_TIMER
             __context__.SourceCodeLine = 276;
             CURR_DUR  .UpdateValue ( CALC_DURATION (  __context__ , _SplusNVRAM.TE[ _SplusNVRAM.I_CURR ], NOW)  ) ; 
             __context__.SourceCodeLine = 277;
-            Trace( "\tCurr_Dur= {{{0}}}\r\n", CURR_DUR ) ; 
+            /* Trace( "\tCurr_Dur= {{{0}}}\r\n", CURR_DUR ) */ ; 
             __context__.SourceCodeLine = 280;
             if ( Functions.TestForTrue  ( ( Functions.BoolToInt ( (Functions.TestForTrue ( Functions.BoolToInt (SELECT_ITEM__POUND__  .Value == 1) ) || Functions.TestForTrue ( Functions.BoolToInt (SELECT_ITEM__POUND__  .Value == 2) )) ))  ) ) 
                 { 
@@ -360,7 +360,7 @@ namespace UserModule_BABY_TIMER
             __context__.SourceCodeLine = 315;
             M = (short) ( (_SplusNVRAM.TE[ _SplusNVRAM.I_CURR ].M + INC) ) ; 
             __context__.SourceCodeLine = 316;
-            Trace( "inc_time({0:d}) m={1:d} sh={2:d}, sm={3:d},  m S/ 60={4:d}  m%60={5:d} m%60={6:d}\r\n", (short)INC, (short)M, (ushort)SH, (ushort)SM, (ushort)Divide( M , 60 ), (ushort)Mod( M , 60 ), (short)Mod( M , 60 )) ; 
+            /* Trace( "inc_time({0:d}) m={1:d} sh={2:d}, sm={3:d},  m S/ 60={4:d}  m%60={5:d} m%60={6:d}\r\n", (short)INC, (short)M, (ushort)SH, (ushort)SM, (ushort)Divide( M , 60 ), (ushort)Mod( M , 60 ), (short)Mod( M , 60 )) */ ; 
             __context__.SourceCodeLine = 319;
             SH = (ushort) ( (SH + Divide( M , 60 )) ) ; 
             __context__.SourceCodeLine = 320;
@@ -369,7 +369,7 @@ namespace UserModule_BABY_TIMER
             while ( Functions.TestForTrue  ( ( Functions.BoolToInt ( M < 0 ))  ) ) 
                 { 
                 __context__.SourceCodeLine = 322;
-                Trace( "\t\tm=m+60 (m={0:d}:{1:d})\r\n", (ushort)M, (short)M) ; 
+                /* Trace( "\t\tm=m+60 (m={0:d}:{1:d})\r\n", (ushort)M, (short)M) */ ; 
                 __context__.SourceCodeLine = 323;
                 M = (short) ( (M + 60) ) ; 
                 __context__.SourceCodeLine = 324;
@@ -382,22 +382,22 @@ namespace UserModule_BABY_TIMER
                     }
                 
                 __context__.SourceCodeLine = 326;
-                Trace( "\t\t\tsh <- {0:d}:{1:d}\r\n", (ushort)SH, (short)SH) ; 
+                /* Trace( "\t\t\tsh <- {0:d}:{1:d}\r\n", (ushort)SH, (short)SH) */ ; 
                 __context__.SourceCodeLine = 321;
                 } 
             
             __context__.SourceCodeLine = 328;
             M = (short) ( Mod( M , 60 ) ) ; 
             __context__.SourceCodeLine = 329;
-            Trace( "\t\tm %60 = ({0:d}:{1:d})\r\n", (ushort)M, (short)M) ; 
+            /* Trace( "\t\tm %60 = ({0:d}:{1:d})\r\n", (ushort)M, (short)M) */ ; 
             __context__.SourceCodeLine = 330;
             SM = (ushort) ( M ) ; 
             __context__.SourceCodeLine = 331;
-            Trace( "\tnewh={0:d} newm={1:d}, m={2:d} m={3:d}\r\n", (ushort)SH, (ushort)SM, (ushort)M, (short)M) ; 
+            /* Trace( "\tnewh={0:d} newm={1:d}, m={2:d} m={3:d}\r\n", (ushort)SH, (ushort)SM, (ushort)M, (short)M) */ ; 
             __context__.SourceCodeLine = 332;
             M = (short) ( Mod( M , 60 ) ) ; 
             __context__.SourceCodeLine = 333;
-            Trace( "\tm={0:d} m={1:d}\r\n", (ushort)M, (short)M) ; 
+            /* Trace( "\tm={0:d} m={1:d}\r\n", (ushort)M, (short)M) */ ; 
             __context__.SourceCodeLine = 336;
             _SplusNVRAM.TE [ _SplusNVRAM.I_CURR] . H = (ushort) ( SH ) ; 
             __context__.SourceCodeLine = 337;
@@ -412,13 +412,13 @@ namespace UserModule_BABY_TIMER
                 __context__.SourceCodeLine = 343;
                 _SplusNVRAM.TE [ (_SplusNVRAM.I_CURR - 1)] . DUR  .UpdateValue ( PREV_DUR  ) ; 
                 __context__.SourceCodeLine = 344;
-                Trace( "\tupdating TE[i_curr-1 ({0:d})].dur = {{{1}}}\r\n", (ushort)(_SplusNVRAM.I_CURR - 1), PREV_DUR ) ; 
+                /* Trace( "\tupdating TE[i_curr-1 ({0:d})].dur = {{{1}}}\r\n", (ushort)(_SplusNVRAM.I_CURR - 1), PREV_DUR ) */ ; 
                 } 
             
             else 
                 { 
                 __context__.SourceCodeLine = 346;
-                Trace( "\tNOT updating TE[i_curr-1 ({0:d})].dur\r\n", (ushort)(_SplusNVRAM.I_CURR - 1)) ; 
+                /* Trace( "\tNOT updating TE[i_curr-1 ({0:d})].dur\r\n", (ushort)(_SplusNVRAM.I_CURR - 1)) */ ; 
                 } 
             
             __context__.SourceCodeLine = 350;
@@ -634,7 +634,7 @@ object ARG1_OnChange_5 ( Object __EventInfo__ )
         __context__.SourceCodeLine = 423;
         R2 = (ushort) ( Mod( ARG1  .UshortValue , ARG2  .UshortValue ) ) ; 
         __context__.SourceCodeLine = 424;
-        Trace( "({0:d}:{1:d}) %({2:d}:{3:d}) = ({4:d}:{5:d})({6:d}:{7:d})\r\n", (ushort)ARG1  .UshortValue, (short)ARG1  .UshortValue, (ushort)ARG2  .UshortValue, (short)ARG2  .UshortValue, (ushort)R1, (short)R1, (ushort)R2, (short)R2) ; 
+        /* Trace( "({0:d}:{1:d}) %({2:d}:{3:d}) = ({4:d}:{5:d})({6:d}:{7:d})\r\n", (ushort)ARG1  .UshortValue, (short)ARG1  .UshortValue, (ushort)ARG2  .UshortValue, (short)ARG2  .UshortValue, (ushort)R1, (short)R1, (ushort)R2, (short)R2) */ ; 
         
         
     }
