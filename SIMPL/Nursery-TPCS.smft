@@ -1,0 +1,8 @@
+<Device Model="TPCS-4SM" Name="TPCS-4SM.">
+   <Network Type="Cresnet" Id="01"/>
+   <Network Type="Ethernet" Id="02">
+      <Device Model="CEN-IO-COM-102" DeviceId="04"/>
+      <Device Model="TSW-752" DeviceId="0A"/>
+      <Device Model="Crestron_App" DeviceId="0B" Name="IPAD"/>
+   </Network>
+</Device>
