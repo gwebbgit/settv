@@ -35,7 +35,7 @@ Comments:
 #DEFAULT_VOLATILE
 #ENABLE_STACK_CHECKING
 
-#ENABLE_TRACE
+//#ENABLE_TRACE
 
 // #ENCODING_ASCII
 // #ENCODING_UTF16
@@ -238,12 +238,6 @@ FUNCTION add_start_history ( string newType ) {
 
 	update_Now();
 
-	/* Add permanent duration to previous item if any */
-	if ( i_curr > 1 ) {
-		prev_dur = calc_duration ( TE[i_curr-1], Now );
-		TE[i_curr-1].dur = prev_dur;
-	}
-
 	/* Add new entry */
 	TE[i_curr].h = Now.h;
 	TE[i_curr].m = Now.m;
@@ -254,6 +248,12 @@ FUNCTION add_start_history ( string newType ) {
 	duration_title$ = "DURATION";
 	duration_h$ = "0";
 	duration_unit$ = "hr";
+
+	/* Add permanent duration to previous item if any */
+	if ( i_curr > 1 ) {
+		prev_dur = calc_duration ( TE[i_curr-1], TE[i_curr] );
+		TE[i_curr-1].dur = prev_dur;
+	}
 
 	/* Update output string */
 	remake_history_string();
@@ -339,7 +339,7 @@ FUNCTION inc_time ( signed_integer inc ) {
 
 	/* Update prior TE's duration, if prior TE exists */
 	if ( i_curr > 1 ) {
-		prev_dur = calc_duration ( TE[i_curr], Now );
+		prev_dur = calc_duration ( TE[i_curr-1], TE[i_curr] );
 		TE[i_curr - 1].dur = prev_dur;
 		trace ( "\tupdating TE[i_curr-1 (%u)].dur = {%s}\n", i_curr-1, prev_dur );
 	} else {
