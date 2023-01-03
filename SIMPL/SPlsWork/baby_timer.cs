@@ -25,13 +25,15 @@ namespace UserModule_BABY_TIMER
         Crestron.Logos.SplusObjects.DigitalInput TIME_DEC_PR;
         Crestron.Logos.SplusObjects.AnalogInput ARG1;
         Crestron.Logos.SplusObjects.AnalogInput ARG2;
-        Crestron.Logos.SplusObjects.StringOutput TOD__DOLLAR__;
+        Crestron.Logos.SplusObjects.DigitalOutput TOD_PM;
         Crestron.Logos.SplusObjects.StringOutput SINCE_TITLE__DOLLAR__;
         Crestron.Logos.SplusObjects.StringOutput SINCE_TIME__DOLLAR__;
         Crestron.Logos.SplusObjects.StringOutput DURATION_TITLE__DOLLAR__;
         Crestron.Logos.SplusObjects.StringOutput DURATION_H__DOLLAR__;
         Crestron.Logos.SplusObjects.StringOutput DURATION_UNIT__DOLLAR__;
         Crestron.Logos.SplusObjects.StringOutput DATE__DOLLAR__;
+        Crestron.Logos.SplusObjects.StringOutput TOD_12H__DOLLAR__;
+        Crestron.Logos.SplusObjects.StringOutput TOD_24H__DOLLAR__;
         Crestron.Logos.SplusObjects.AnalogOutput SELECT_ITEM__POUND__;
         Crestron.Logos.SplusObjects.AnalogOutput DESELECT_ITEM__POUND__;
         InOutArray<Crestron.Logos.SplusObjects.StringOutput> HISTORY__DOLLAR__;
@@ -40,11 +42,11 @@ namespace UserModule_BABY_TIMER
         private void UPDATE_NOW (  SplusExecutionContext __context__ ) 
             { 
             
-            __context__.SourceCodeLine = 110;
+            __context__.SourceCodeLine = 115;
             NOW . H = (ushort) ( Functions.GetHourNum() ) ; 
-            __context__.SourceCodeLine = 111;
+            __context__.SourceCodeLine = 116;
             NOW . M = (ushort) ( Functions.GetMinutesNum() ) ; 
-            __context__.SourceCodeLine = 112;
+            __context__.SourceCodeLine = 117;
             NOW . S = (ushort) ( Functions.GetSecondsNum() ) ; 
             
             }
@@ -57,40 +59,40 @@ namespace UserModule_BABY_TIMER
             COLOR  = new CrestronString( Crestron.Logos.SplusObjects.CrestronStringEncoding.eEncodingASCII, 6, this );
             
             
-            __context__.SourceCodeLine = 122;
+            __context__.SourceCodeLine = 127;
             ushort __FN_FORSTART_VAL__1 = (ushort) ( 1 ) ;
             ushort __FN_FOREND_VAL__1 = (ushort)_SplusNVRAM.I_CURR; 
             int __FN_FORSTEP_VAL__1 = (int)1; 
             for ( I  = __FN_FORSTART_VAL__1; (__FN_FORSTEP_VAL__1 > 0)  ? ( (I  >= __FN_FORSTART_VAL__1) && (I  <= __FN_FOREND_VAL__1) ) : ( (I  <= __FN_FORSTART_VAL__1) && (I  >= __FN_FOREND_VAL__1) ) ; I  += (ushort)__FN_FORSTEP_VAL__1) 
                 { 
-                __context__.SourceCodeLine = 125;
+                __context__.SourceCodeLine = 130;
                 if ( Functions.TestForTrue  ( ( Functions.BoolToInt (_SplusNVRAM.TE[ I ].TYPE == "WAKE"))  ) ) 
                     { 
-                    __context__.SourceCodeLine = 127;
+                    __context__.SourceCodeLine = 132;
                     COLOR  .UpdateValue ( "a0ffa0"  ) ; 
                     } 
                 
                 else 
                     {
-                    __context__.SourceCodeLine = 129;
+                    __context__.SourceCodeLine = 134;
                     if ( Functions.TestForTrue  ( ( Functions.BoolToInt (_SplusNVRAM.TE[ I ].TYPE == "SLEEP"))  ) ) 
                         { 
-                        __context__.SourceCodeLine = 131;
+                        __context__.SourceCodeLine = 136;
                         COLOR  .UpdateValue ( "7f7fff"  ) ; 
                         } 
                     
                     else 
                         {
-                        __context__.SourceCodeLine = 133;
+                        __context__.SourceCodeLine = 138;
                         if ( Functions.TestForTrue  ( ( Functions.BoolToInt (_SplusNVRAM.TE[ I ].TYPE == "OFF"))  ) ) 
                             { 
-                            __context__.SourceCodeLine = 135;
+                            __context__.SourceCodeLine = 140;
                             COLOR  .UpdateValue ( "7f7f7f"  ) ; 
                             } 
                         
                         else 
                             { 
-                            __context__.SourceCodeLine = 138;
+                            __context__.SourceCodeLine = 143;
                             COLOR  .UpdateValue ( "ffffff"  ) ; 
                             } 
                         
@@ -98,20 +100,20 @@ namespace UserModule_BABY_TIMER
                     
                     }
                 
-                __context__.SourceCodeLine = 144;
+                __context__.SourceCodeLine = 149;
                 if ( Functions.TestForTrue  ( ( Functions.BoolToInt ( (Functions.TestForTrue ( Functions.BoolToInt (I == _SplusNVRAM.I_CURR) ) || Functions.TestForTrue ( Functions.BoolToInt (I == 10) )) ))  ) ) 
                     { 
-                    __context__.SourceCodeLine = 146;
+                    __context__.SourceCodeLine = 151;
                     MakeString ( HISTORY__DOLLAR__ [ I] , "<font color=\"#{0}\">{1}: {2:d}:{3:d2} ({4}...</font>", COLOR , _SplusNVRAM.TE [ I] . TYPE , (ushort)_SplusNVRAM.TE[ I ].H, (ushort)_SplusNVRAM.TE[ I ].M, CURR_DUR ) ; 
                     } 
                 
                 else 
                     { 
-                    __context__.SourceCodeLine = 149;
+                    __context__.SourceCodeLine = 154;
                     MakeString ( HISTORY__DOLLAR__ [ I] , "<font color=\"#{0}\">{1}: {2:d}:{3:d2} ({4})</font>", COLOR , _SplusNVRAM.TE [ I] . TYPE , (ushort)_SplusNVRAM.TE[ I ].H, (ushort)_SplusNVRAM.TE[ I ].M, _SplusNVRAM.TE [ I] . DUR ) ; 
                     } 
                 
-                __context__.SourceCodeLine = 122;
+                __context__.SourceCodeLine = 127;
                 } 
             
             
@@ -131,74 +133,74 @@ namespace UserModule_BABY_TIMER
             LT2 .PopulateCustomAttributeList( false );
             
             
-            __context__.SourceCodeLine = 167;
-            /* Trace( "calc_duration()...\r\n") */ ; 
-            __context__.SourceCodeLine = 170;
-            LT2 . H = (ushort) ( TE2.H ) ; 
-            __context__.SourceCodeLine = 171;
-            LT2 . M = (ushort) ( TE2.M ) ; 
             __context__.SourceCodeLine = 172;
-            LT2 . S = (ushort) ( TE2.S ) ; 
-            __context__.SourceCodeLine = 173;
-            LT2 . DUR  .UpdateValue ( TE2 . DUR  ) ; 
-            __context__.SourceCodeLine = 174;
-            LT2 . TYPE  .UpdateValue ( TE2 . TYPE  ) ; 
+            Trace( "calc_duration()...\r\n") ; 
+            __context__.SourceCodeLine = 175;
+            LT2 . H = (ushort) ( TE2.H ) ; 
+            __context__.SourceCodeLine = 176;
+            LT2 . M = (ushort) ( TE2.M ) ; 
             __context__.SourceCodeLine = 177;
+            LT2 . S = (ushort) ( TE2.S ) ; 
+            __context__.SourceCodeLine = 178;
+            LT2 . DUR  .UpdateValue ( TE2 . DUR  ) ; 
+            __context__.SourceCodeLine = 179;
+            LT2 . TYPE  .UpdateValue ( TE2 . TYPE  ) ; 
+            __context__.SourceCodeLine = 182;
             if ( Functions.TestForTrue  ( ( Functions.BoolToInt ( LT2.S < TE1.S ))  ) ) 
                 { 
-                __context__.SourceCodeLine = 178;
+                __context__.SourceCodeLine = 183;
                 LT2 . S = (ushort) ( (LT2.S + 60) ) ; 
-                __context__.SourceCodeLine = 179;
+                __context__.SourceCodeLine = 184;
                 LT2 . M = (ushort) ( (LT2.M - 1) ) ; 
                 } 
             
-            __context__.SourceCodeLine = 181;
+            __context__.SourceCodeLine = 186;
             if ( Functions.TestForTrue  ( ( Functions.BoolToInt ( LT2.M < TE1.M ))  ) ) 
                 { 
-                __context__.SourceCodeLine = 182;
+                __context__.SourceCodeLine = 187;
                 LT2 . M = (ushort) ( (LT2.M + 60) ) ; 
-                __context__.SourceCodeLine = 183;
+                __context__.SourceCodeLine = 188;
                 LT2 . H = (ushort) ( (LT2.H - 1) ) ; 
                 } 
             
-            __context__.SourceCodeLine = 185;
+            __context__.SourceCodeLine = 190;
             if ( Functions.TestForTrue  ( ( Functions.BoolToInt ( LT2.H < TE1.H ))  ) ) 
                 { 
-                __context__.SourceCodeLine = 186;
+                __context__.SourceCodeLine = 191;
                 LT2 . H = (ushort) ( (LT2.H + 24) ) ; 
                 } 
             
-            __context__.SourceCodeLine = 188;
+            __context__.SourceCodeLine = 193;
             if ( Functions.TestForTrue  ( ( Functions.BoolToInt ( LT2.M < TE1.M ))  ) ) 
                 { 
-                __context__.SourceCodeLine = 190;
+                __context__.SourceCodeLine = 195;
                 if ( Functions.TestForTrue  ( ( Functions.BoolToInt ( (TE1.M - LT2.M) < 12 ))  ) ) 
                     { 
-                    __context__.SourceCodeLine = 192;
+                    __context__.SourceCodeLine = 197;
                     DUR_H = (short) ( 0 ) ; 
-                    __context__.SourceCodeLine = 193;
+                    __context__.SourceCodeLine = 198;
                     DUR_DEC = (ushort) ( 0 ) ; 
-                    __context__.SourceCodeLine = 194;
-                    /* Trace( ">>>dur_h within 12 hours earlier... FIXME\r\n") */ ; 
+                    __context__.SourceCodeLine = 199;
+                    Trace( ">>>dur_h within 12 hours earlier... FIXME\r\n") ; 
                     } 
                 
                 else 
                     { 
-                    __context__.SourceCodeLine = 200;
-                    /* Trace( ">>>dur_h else within 12 hours later, must be after midnight; add 24 to te2.h... FIXME\r\n") */ ; 
+                    __context__.SourceCodeLine = 205;
+                    Trace( ">>>dur_h else within 12 hours later, must be after midnight; add 24 to te2.h... FIXME\r\n") ; 
                     } 
                 
                 } 
             
-            __context__.SourceCodeLine = 205;
-            DUR_H = (short) ( (LT2.H - TE1.H) ) ; 
-            __context__.SourceCodeLine = 206;
-            DUR_DEC = (ushort) ( ((LT2.M - TE1.M) / 6) ) ; 
-            __context__.SourceCodeLine = 207;
-            /* Trace( "\tlt2.m={0:d}:{1:d}, te1.m={2:d}:{3:d}  dur_h={4:d}:{5:d}  dur_dec={6:d}\r\n", (ushort)TE2.M, (short)TE2.M, (ushort)TE1.M, (short)TE1.M, (ushort)DUR_H, (short)DUR_H, (ushort)DUR_DEC) */ ; 
-            __context__.SourceCodeLine = 209;
-            MakeString ( RET , "{0:d}.{1:d}", (short)DUR_H, (ushort)DUR_DEC) ; 
             __context__.SourceCodeLine = 210;
+            DUR_H = (short) ( (LT2.H - TE1.H) ) ; 
+            __context__.SourceCodeLine = 211;
+            DUR_DEC = (ushort) ( ((LT2.M - TE1.M) / 6) ) ; 
+            __context__.SourceCodeLine = 212;
+            Trace( "\tlt2.m={0:d}:{1:d}, te1.m={2:d}:{3:d}  dur_h={4:d}:{5:d}  dur_dec={6:d}\r\n", (ushort)TE2.M, (short)TE2.M, (ushort)TE1.M, (short)TE1.M, (ushort)DUR_H, (short)DUR_H, (ushort)DUR_DEC) ; 
+            __context__.SourceCodeLine = 214;
+            MakeString ( RET , "{0:d}.{1:d}", (short)DUR_H, (ushort)DUR_DEC) ; 
+            __context__.SourceCodeLine = 215;
             return ( RET ) ; 
             
             }
@@ -211,70 +213,70 @@ namespace UserModule_BABY_TIMER
             PREV_DUR  = new CrestronString( Crestron.Logos.SplusObjects.CrestronStringEncoding.eEncodingASCII, 5, this );
             
             
-            __context__.SourceCodeLine = 223;
+            __context__.SourceCodeLine = 228;
             if ( Functions.TestForTrue  ( ( Functions.BoolToInt ( _SplusNVRAM.I_CURR >= 10 ))  ) ) 
                 { 
-                __context__.SourceCodeLine = 225;
+                __context__.SourceCodeLine = 230;
                 ushort __FN_FORSTART_VAL__1 = (ushort) ( 2 ) ;
                 ushort __FN_FOREND_VAL__1 = (ushort)10; 
                 int __FN_FORSTEP_VAL__1 = (int)1; 
                 for ( I  = __FN_FORSTART_VAL__1; (__FN_FORSTEP_VAL__1 > 0)  ? ( (I  >= __FN_FORSTART_VAL__1) && (I  <= __FN_FOREND_VAL__1) ) : ( (I  <= __FN_FORSTART_VAL__1) && (I  >= __FN_FOREND_VAL__1) ) ; I  += (ushort)__FN_FORSTEP_VAL__1) 
                     { 
-                    __context__.SourceCodeLine = 226;
+                    __context__.SourceCodeLine = 231;
                     _SplusNVRAM.TE [ (I - 1)] . H = (ushort) ( _SplusNVRAM.TE[ I ].H ) ; 
-                    __context__.SourceCodeLine = 227;
+                    __context__.SourceCodeLine = 232;
                     _SplusNVRAM.TE [ (I - 1)] . M = (ushort) ( _SplusNVRAM.TE[ I ].M ) ; 
-                    __context__.SourceCodeLine = 228;
+                    __context__.SourceCodeLine = 233;
                     _SplusNVRAM.TE [ (I - 1)] . S = (ushort) ( _SplusNVRAM.TE[ I ].S ) ; 
-                    __context__.SourceCodeLine = 229;
+                    __context__.SourceCodeLine = 234;
                     _SplusNVRAM.TE [ (I - 1)] . DUR  .UpdateValue ( _SplusNVRAM.TE [ I] . DUR  ) ; 
-                    __context__.SourceCodeLine = 230;
+                    __context__.SourceCodeLine = 235;
                     _SplusNVRAM.TE [ (I - 1)] . TYPE  .UpdateValue ( _SplusNVRAM.TE [ I] . TYPE  ) ; 
-                    __context__.SourceCodeLine = 225;
+                    __context__.SourceCodeLine = 230;
                     } 
                 
-                __context__.SourceCodeLine = 232;
+                __context__.SourceCodeLine = 237;
                 _SplusNVRAM.TE [ 10] . TYPE  .UpdateValue ( ""  ) ; 
-                __context__.SourceCodeLine = 233;
+                __context__.SourceCodeLine = 238;
                 _SplusNVRAM.I_CURR = (ushort) ( 10 ) ; 
                 } 
             
             else 
                 { 
-                __context__.SourceCodeLine = 236;
+                __context__.SourceCodeLine = 241;
                 _SplusNVRAM.I_CURR = (ushort) ( (_SplusNVRAM.I_CURR + 1) ) ; 
                 } 
             
-            __context__.SourceCodeLine = 239;
-            UPDATE_NOW (  __context__  ) ; 
-            __context__.SourceCodeLine = 242;
-            _SplusNVRAM.TE [ _SplusNVRAM.I_CURR] . H = (ushort) ( NOW.H ) ; 
-            __context__.SourceCodeLine = 243;
-            _SplusNVRAM.TE [ _SplusNVRAM.I_CURR] . M = (ushort) ( NOW.M ) ; 
             __context__.SourceCodeLine = 244;
-            _SplusNVRAM.TE [ _SplusNVRAM.I_CURR] . S = (ushort) ( NOW.S ) ; 
-            __context__.SourceCodeLine = 245;
-            _SplusNVRAM.TE [ _SplusNVRAM.I_CURR] . TYPE  .UpdateValue ( NEWTYPE  ) ; 
-            __context__.SourceCodeLine = 246;
-            _SplusNVRAM.TE [ _SplusNVRAM.I_CURR] . DUR  .UpdateValue ( ""  ) ; 
+            UPDATE_NOW (  __context__  ) ; 
             __context__.SourceCodeLine = 247;
-            MakeString ( SINCE_TIME__DOLLAR__ , "{0:d}:{1:d2}", (ushort)_SplusNVRAM.TE[ _SplusNVRAM.I_CURR ].H, (ushort)_SplusNVRAM.TE[ _SplusNVRAM.I_CURR ].M) ; 
+            _SplusNVRAM.TE [ _SplusNVRAM.I_CURR] . H = (ushort) ( NOW.H ) ; 
             __context__.SourceCodeLine = 248;
-            DURATION_TITLE__DOLLAR__  .UpdateValue ( "DURATION"  ) ; 
+            _SplusNVRAM.TE [ _SplusNVRAM.I_CURR] . M = (ushort) ( NOW.M ) ; 
             __context__.SourceCodeLine = 249;
-            DURATION_H__DOLLAR__  .UpdateValue ( "0"  ) ; 
+            _SplusNVRAM.TE [ _SplusNVRAM.I_CURR] . S = (ushort) ( NOW.S ) ; 
             __context__.SourceCodeLine = 250;
-            DURATION_UNIT__DOLLAR__  .UpdateValue ( "hr"  ) ; 
+            _SplusNVRAM.TE [ _SplusNVRAM.I_CURR] . TYPE  .UpdateValue ( NEWTYPE  ) ; 
+            __context__.SourceCodeLine = 251;
+            _SplusNVRAM.TE [ _SplusNVRAM.I_CURR] . DUR  .UpdateValue ( ""  ) ; 
+            __context__.SourceCodeLine = 252;
+            MakeString ( SINCE_TIME__DOLLAR__ , "{0:d}:{1:d2}", (ushort)_SplusNVRAM.TE[ _SplusNVRAM.I_CURR ].H, (ushort)_SplusNVRAM.TE[ _SplusNVRAM.I_CURR ].M) ; 
             __context__.SourceCodeLine = 253;
+            DURATION_TITLE__DOLLAR__  .UpdateValue ( "DURATION"  ) ; 
+            __context__.SourceCodeLine = 254;
+            DURATION_H__DOLLAR__  .UpdateValue ( "0"  ) ; 
+            __context__.SourceCodeLine = 255;
+            DURATION_UNIT__DOLLAR__  .UpdateValue ( "hr"  ) ; 
+            __context__.SourceCodeLine = 258;
             if ( Functions.TestForTrue  ( ( Functions.BoolToInt ( _SplusNVRAM.I_CURR > 1 ))  ) ) 
                 { 
-                __context__.SourceCodeLine = 254;
+                __context__.SourceCodeLine = 259;
                 PREV_DUR  .UpdateValue ( CALC_DURATION (  __context__ , _SplusNVRAM.TE[ (_SplusNVRAM.I_CURR - 1) ], _SplusNVRAM.TE[ _SplusNVRAM.I_CURR ])  ) ; 
-                __context__.SourceCodeLine = 255;
+                __context__.SourceCodeLine = 260;
                 _SplusNVRAM.TE [ (_SplusNVRAM.I_CURR - 1)] . DUR  .UpdateValue ( PREV_DUR  ) ; 
                 } 
             
-            __context__.SourceCodeLine = 259;
+            __context__.SourceCodeLine = 264;
             REMAKE_HISTORY_STRING (  __context__  ) ; 
             
             }
@@ -282,28 +284,76 @@ namespace UserModule_BABY_TIMER
         private void UPDATE_TIMES (  SplusExecutionContext __context__ ) 
             { 
             
-            __context__.SourceCodeLine = 267;
-            UPDATE_NOW (  __context__  ) ; 
-            __context__.SourceCodeLine = 268;
-            /* Trace( "update_times()...\r\n\ti_curr={0:d}\r\n", (ushort)_SplusNVRAM.I_CURR) */ ; 
-            __context__.SourceCodeLine = 271;
-            MakeString ( TOD__DOLLAR__ , "{0:d}:{1:d2}", (ushort)NOW.H, (ushort)NOW.M) ; 
             __context__.SourceCodeLine = 272;
-            MakeString ( DATE__DOLLAR__ , "{0} {1} {2:d}, {3:d}", Functions.Left ( Functions.Day ( ) ,  (int) ( 3 ) ) , Functions.Left ( Functions.Month ( ) ,  (int) ( 3 ) ) , (ushort)Functions.GetDateNum(), (ushort)Functions.GetYearNum()) ; 
+            UPDATE_NOW (  __context__  ) ; 
+            __context__.SourceCodeLine = 273;
+            Trace( "update_times()...\r\n\ti_curr={0:d}\r\n", (ushort)_SplusNVRAM.I_CURR) ; 
             __context__.SourceCodeLine = 276;
+            if ( Functions.TestForTrue  ( ( Functions.BoolToInt (NOW.H == 0))  ) ) 
+                { 
+                __context__.SourceCodeLine = 278;
+                MakeString ( TOD_12H__DOLLAR__ , "{0:d}:{1:d2}<font size=\"60\">AM</font>", (ushort)12, (ushort)NOW.M) ; 
+                __context__.SourceCodeLine = 279;
+                TOD_PM  .Value = (ushort) ( 0 ) ; 
+                } 
+            
+            else 
+                {
+                __context__.SourceCodeLine = 280;
+                if ( Functions.TestForTrue  ( ( Functions.BoolToInt ( NOW.H < 12 ))  ) ) 
+                    { 
+                    __context__.SourceCodeLine = 282;
+                    MakeString ( TOD_12H__DOLLAR__ , "{0:d}:{1:d2}<font size=\"60\">AM</font>", (ushort)NOW.H, (ushort)NOW.M) ; 
+                    __context__.SourceCodeLine = 283;
+                    TOD_PM  .Value = (ushort) ( 0 ) ; 
+                    } 
+                
+                else 
+                    {
+                    __context__.SourceCodeLine = 284;
+                    if ( Functions.TestForTrue  ( ( Functions.BoolToInt (NOW.H == 12))  ) ) 
+                        { 
+                        __context__.SourceCodeLine = 286;
+                        MakeString ( TOD_12H__DOLLAR__ , "{0:d}:{1:d2}<font size=\"60\">PM</font>", (ushort)12, (ushort)NOW.M) ; 
+                        __context__.SourceCodeLine = 287;
+                        TOD_PM  .Value = (ushort) ( 1 ) ; 
+                        } 
+                    
+                    else 
+                        {
+                        __context__.SourceCodeLine = 288;
+                        if ( Functions.TestForTrue  ( ( Functions.BoolToInt ( NOW.H > 12 ))  ) ) 
+                            { 
+                            __context__.SourceCodeLine = 290;
+                            MakeString ( TOD_12H__DOLLAR__ , "{0:d}:{1:d2}<font size=\"60\">PM</font>", (ushort)(NOW.H - 12), (ushort)NOW.M) ; 
+                            __context__.SourceCodeLine = 291;
+                            TOD_PM  .Value = (ushort) ( 1 ) ; 
+                            } 
+                        
+                        }
+                    
+                    }
+                
+                }
+            
+            __context__.SourceCodeLine = 293;
+            MakeString ( TOD_24H__DOLLAR__ , "{0:d}:{1:d2}", (ushort)NOW.H, (ushort)NOW.M) ; 
+            __context__.SourceCodeLine = 294;
+            MakeString ( DATE__DOLLAR__ , "{0} {1} {2:d}, {3:d}", Functions.Left ( Functions.Day ( ) ,  (int) ( 3 ) ) , Functions.Left ( Functions.Month ( ) ,  (int) ( 3 ) ) , (ushort)Functions.GetDateNum(), (ushort)Functions.GetYearNum()) ; 
+            __context__.SourceCodeLine = 298;
             CURR_DUR  .UpdateValue ( CALC_DURATION (  __context__ , _SplusNVRAM.TE[ _SplusNVRAM.I_CURR ], NOW)  ) ; 
-            __context__.SourceCodeLine = 277;
-            /* Trace( "\tCurr_Dur= {{{0}}}\r\n", CURR_DUR ) */ ; 
-            __context__.SourceCodeLine = 280;
+            __context__.SourceCodeLine = 299;
+            Trace( "\tCurr_Dur= {{{0}}}\r\n", CURR_DUR ) ; 
+            __context__.SourceCodeLine = 302;
             if ( Functions.TestForTrue  ( ( Functions.BoolToInt ( (Functions.TestForTrue ( Functions.BoolToInt (SELECT_ITEM__POUND__  .Value == 1) ) || Functions.TestForTrue ( Functions.BoolToInt (SELECT_ITEM__POUND__  .Value == 2) )) ))  ) ) 
                 { 
-                __context__.SourceCodeLine = 282;
+                __context__.SourceCodeLine = 304;
                 DURATION_H__DOLLAR__  .UpdateValue ( CURR_DUR  ) ; 
-                __context__.SourceCodeLine = 283;
+                __context__.SourceCodeLine = 305;
                 DURATION_UNIT__DOLLAR__  .UpdateValue ( "hr"  ) ; 
                 } 
             
-            __context__.SourceCodeLine = 287;
+            __context__.SourceCodeLine = 309;
             REMAKE_HISTORY_STRING (  __context__  ) ; 
             
             }
@@ -311,30 +361,30 @@ namespace UserModule_BABY_TIMER
         private void SELECT_ITEM (  SplusExecutionContext __context__, ushort SEL ) 
             { 
             
-            __context__.SourceCodeLine = 291;
+            __context__.SourceCodeLine = 313;
             if ( Functions.TestForTrue  ( ( Functions.BoolToInt (SEL != 1))  ) ) 
                 {
-                __context__.SourceCodeLine = 291;
+                __context__.SourceCodeLine = 313;
                 DESELECT_ITEM__POUND__  .Value = (ushort) ( 1 ) ; 
                 }
             
-            __context__.SourceCodeLine = 292;
+            __context__.SourceCodeLine = 314;
             if ( Functions.TestForTrue  ( ( Functions.BoolToInt (SEL != 2))  ) ) 
                 {
-                __context__.SourceCodeLine = 292;
+                __context__.SourceCodeLine = 314;
                 DESELECT_ITEM__POUND__  .Value = (ushort) ( 2 ) ; 
                 }
             
-            __context__.SourceCodeLine = 293;
+            __context__.SourceCodeLine = 315;
             if ( Functions.TestForTrue  ( ( Functions.BoolToInt (SEL != 3))  ) ) 
                 {
-                __context__.SourceCodeLine = 293;
+                __context__.SourceCodeLine = 315;
                 DESELECT_ITEM__POUND__  .Value = (ushort) ( 3 ) ; 
                 }
             
-            __context__.SourceCodeLine = 294;
+            __context__.SourceCodeLine = 316;
             SELECT_ITEM__POUND__  .Value = (ushort) ( SEL ) ; 
-            __context__.SourceCodeLine = 295;
+            __context__.SourceCodeLine = 317;
             _SplusNVRAM.SAVE_SELECT = (ushort) ( SEL ) ; 
             
             }
@@ -351,81 +401,81 @@ namespace UserModule_BABY_TIMER
             PREV_DUR  = new CrestronString( Crestron.Logos.SplusObjects.CrestronStringEncoding.eEncodingASCII, 5, this );
             
             
-            __context__.SourceCodeLine = 310;
+            __context__.SourceCodeLine = 332;
             SH = (ushort) ( _SplusNVRAM.TE[ _SplusNVRAM.I_CURR ].H ) ; 
-            __context__.SourceCodeLine = 311;
+            __context__.SourceCodeLine = 333;
             SM = (ushort) ( _SplusNVRAM.TE[ _SplusNVRAM.I_CURR ].M ) ; 
-            __context__.SourceCodeLine = 312;
+            __context__.SourceCodeLine = 334;
             SS = (ushort) ( _SplusNVRAM.TE[ _SplusNVRAM.I_CURR ].S ) ; 
-            __context__.SourceCodeLine = 315;
+            __context__.SourceCodeLine = 337;
             M = (short) ( (_SplusNVRAM.TE[ _SplusNVRAM.I_CURR ].M + INC) ) ; 
-            __context__.SourceCodeLine = 316;
-            /* Trace( "inc_time({0:d}) m={1:d} sh={2:d}, sm={3:d},  m S/ 60={4:d}  m%60={5:d} m%60={6:d}\r\n", (short)INC, (short)M, (ushort)SH, (ushort)SM, (ushort)Divide( M , 60 ), (ushort)Mod( M , 60 ), (short)Mod( M , 60 )) */ ; 
-            __context__.SourceCodeLine = 319;
+            __context__.SourceCodeLine = 338;
+            Trace( "inc_time({0:d}) m={1:d} sh={2:d}, sm={3:d},  m S/ 60={4:d}  m%60={5:d} m%60={6:d}\r\n", (short)INC, (short)M, (ushort)SH, (ushort)SM, (ushort)Divide( M , 60 ), (ushort)Mod( M , 60 ), (short)Mod( M , 60 )) ; 
+            __context__.SourceCodeLine = 341;
             SH = (ushort) ( (SH + Divide( M , 60 )) ) ; 
-            __context__.SourceCodeLine = 320;
+            __context__.SourceCodeLine = 342;
             SH = (ushort) ( Mod( SH , 24 ) ) ; 
-            __context__.SourceCodeLine = 321;
+            __context__.SourceCodeLine = 343;
             while ( Functions.TestForTrue  ( ( Functions.BoolToInt ( M < 0 ))  ) ) 
                 { 
-                __context__.SourceCodeLine = 322;
-                /* Trace( "\t\tm=m+60 (m={0:d}:{1:d})\r\n", (ushort)M, (short)M) */ ; 
-                __context__.SourceCodeLine = 323;
+                __context__.SourceCodeLine = 344;
+                Trace( "\t\tm=m+60 (m={0:d}:{1:d})\r\n", (ushort)M, (short)M) ; 
+                __context__.SourceCodeLine = 345;
                 M = (short) ( (M + 60) ) ; 
-                __context__.SourceCodeLine = 324;
+                __context__.SourceCodeLine = 346;
                 SH = (ushort) ( (SH - 1) ) ; 
-                __context__.SourceCodeLine = 325;
+                __context__.SourceCodeLine = 347;
                 if ( Functions.TestForTrue  ( ( Functions.BoolToInt ( SH < 0 ))  ) ) 
                     {
-                    __context__.SourceCodeLine = 325;
+                    __context__.SourceCodeLine = 347;
                     SH = (ushort) ( 23 ) ; 
                     }
                 
-                __context__.SourceCodeLine = 326;
-                /* Trace( "\t\t\tsh <- {0:d}:{1:d}\r\n", (ushort)SH, (short)SH) */ ; 
-                __context__.SourceCodeLine = 321;
+                __context__.SourceCodeLine = 348;
+                Trace( "\t\t\tsh <- {0:d}:{1:d}\r\n", (ushort)SH, (short)SH) ; 
+                __context__.SourceCodeLine = 343;
                 } 
             
-            __context__.SourceCodeLine = 328;
+            __context__.SourceCodeLine = 350;
             M = (short) ( Mod( M , 60 ) ) ; 
-            __context__.SourceCodeLine = 329;
-            /* Trace( "\t\tm %60 = ({0:d}:{1:d})\r\n", (ushort)M, (short)M) */ ; 
-            __context__.SourceCodeLine = 330;
+            __context__.SourceCodeLine = 351;
+            Trace( "\t\tm %60 = ({0:d}:{1:d})\r\n", (ushort)M, (short)M) ; 
+            __context__.SourceCodeLine = 352;
             SM = (ushort) ( M ) ; 
-            __context__.SourceCodeLine = 331;
-            /* Trace( "\tnewh={0:d} newm={1:d}, m={2:d} m={3:d}\r\n", (ushort)SH, (ushort)SM, (ushort)M, (short)M) */ ; 
-            __context__.SourceCodeLine = 332;
+            __context__.SourceCodeLine = 353;
+            Trace( "\tnewh={0:d} newm={1:d}, m={2:d} m={3:d}\r\n", (ushort)SH, (ushort)SM, (ushort)M, (short)M) ; 
+            __context__.SourceCodeLine = 354;
             M = (short) ( Mod( M , 60 ) ) ; 
-            __context__.SourceCodeLine = 333;
-            /* Trace( "\tm={0:d} m={1:d}\r\n", (ushort)M, (short)M) */ ; 
-            __context__.SourceCodeLine = 336;
+            __context__.SourceCodeLine = 355;
+            Trace( "\tm={0:d} m={1:d}\r\n", (ushort)M, (short)M) ; 
+            __context__.SourceCodeLine = 358;
             _SplusNVRAM.TE [ _SplusNVRAM.I_CURR] . H = (ushort) ( SH ) ; 
-            __context__.SourceCodeLine = 337;
+            __context__.SourceCodeLine = 359;
             _SplusNVRAM.TE [ _SplusNVRAM.I_CURR] . M = (ushort) ( SM ) ; 
-            __context__.SourceCodeLine = 338;
+            __context__.SourceCodeLine = 360;
             _SplusNVRAM.TE [ _SplusNVRAM.I_CURR] . S = (ushort) ( SS ) ; 
-            __context__.SourceCodeLine = 341;
+            __context__.SourceCodeLine = 363;
             if ( Functions.TestForTrue  ( ( Functions.BoolToInt ( _SplusNVRAM.I_CURR > 1 ))  ) ) 
                 { 
-                __context__.SourceCodeLine = 342;
+                __context__.SourceCodeLine = 364;
                 PREV_DUR  .UpdateValue ( CALC_DURATION (  __context__ , _SplusNVRAM.TE[ (_SplusNVRAM.I_CURR - 1) ], _SplusNVRAM.TE[ _SplusNVRAM.I_CURR ])  ) ; 
-                __context__.SourceCodeLine = 343;
+                __context__.SourceCodeLine = 365;
                 _SplusNVRAM.TE [ (_SplusNVRAM.I_CURR - 1)] . DUR  .UpdateValue ( PREV_DUR  ) ; 
-                __context__.SourceCodeLine = 344;
-                /* Trace( "\tupdating TE[i_curr-1 ({0:d})].dur = {{{1}}}\r\n", (ushort)(_SplusNVRAM.I_CURR - 1), PREV_DUR ) */ ; 
+                __context__.SourceCodeLine = 366;
+                Trace( "\tupdating TE[i_curr-1 ({0:d})].dur = {{{1}}}\r\n", (ushort)(_SplusNVRAM.I_CURR - 1), PREV_DUR ) ; 
                 } 
             
             else 
                 { 
-                __context__.SourceCodeLine = 346;
-                /* Trace( "\tNOT updating TE[i_curr-1 ({0:d})].dur\r\n", (ushort)(_SplusNVRAM.I_CURR - 1)) */ ; 
+                __context__.SourceCodeLine = 368;
+                Trace( "\tNOT updating TE[i_curr-1 ({0:d})].dur\r\n", (ushort)(_SplusNVRAM.I_CURR - 1)) ; 
                 } 
             
-            __context__.SourceCodeLine = 350;
+            __context__.SourceCodeLine = 372;
             MakeString ( SINCE_TIME__DOLLAR__ , "{0:d}:{1:d2}", (ushort)SH, (ushort)SM) ; 
-            __context__.SourceCodeLine = 351;
+            __context__.SourceCodeLine = 373;
             UPDATE_TIMES (  __context__  ) ; 
-            __context__.SourceCodeLine = 354;
+            __context__.SourceCodeLine = 376;
             REMAKE_HISTORY_STRING (  __context__  ) ; 
             
             }
@@ -438,11 +488,11 @@ namespace UserModule_BABY_TIMER
             {
                 SplusExecutionContext __context__ = SplusThreadStartCode(__SignalEventArg__);
                 
-                __context__.SourceCodeLine = 360;
+                __context__.SourceCodeLine = 382;
                 SELECT_ITEM (  __context__ , (ushort)( 1 )) ; 
-                __context__.SourceCodeLine = 361;
+                __context__.SourceCodeLine = 383;
                 SINCE_TITLE__DOLLAR__  .UpdateValue ( "SLEEPING SINCE"  ) ; 
-                __context__.SourceCodeLine = 362;
+                __context__.SourceCodeLine = 384;
                 ADD_START_HISTORY (  __context__ , "SLEEP") ; 
                 
                 
@@ -461,11 +511,11 @@ namespace UserModule_BABY_TIMER
         {
             SplusExecutionContext __context__ = SplusThreadStartCode(__SignalEventArg__);
             
-            __context__.SourceCodeLine = 366;
+            __context__.SourceCodeLine = 388;
             SELECT_ITEM (  __context__ , (ushort)( 2 )) ; 
-            __context__.SourceCodeLine = 367;
+            __context__.SourceCodeLine = 389;
             SINCE_TITLE__DOLLAR__  .UpdateValue ( "AWAKE SINCE"  ) ; 
-            __context__.SourceCodeLine = 368;
+            __context__.SourceCodeLine = 390;
             ADD_START_HISTORY (  __context__ , "WAKE") ; 
             
             
@@ -484,23 +534,23 @@ object OFF_PR_OnPush_2 ( Object __EventInfo__ )
     {
         SplusExecutionContext __context__ = SplusThreadStartCode(__SignalEventArg__);
         
-        __context__.SourceCodeLine = 372;
+        __context__.SourceCodeLine = 394;
         SELECT_ITEM (  __context__ , (ushort)( 3 )) ; 
-        __context__.SourceCodeLine = 373;
+        __context__.SourceCodeLine = 395;
         SINCE_TITLE__DOLLAR__  .UpdateValue ( ""  ) ; 
-        __context__.SourceCodeLine = 374;
+        __context__.SourceCodeLine = 396;
         SINCE_TIME__DOLLAR__  .UpdateValue ( ""  ) ; 
-        __context__.SourceCodeLine = 375;
+        __context__.SourceCodeLine = 397;
         DURATION_TITLE__DOLLAR__  .UpdateValue ( ""  ) ; 
-        __context__.SourceCodeLine = 376;
+        __context__.SourceCodeLine = 398;
         DURATION_H__DOLLAR__  .UpdateValue ( ""  ) ; 
-        __context__.SourceCodeLine = 377;
+        __context__.SourceCodeLine = 399;
         DURATION_UNIT__DOLLAR__  .UpdateValue ( ""  ) ; 
-        __context__.SourceCodeLine = 378;
+        __context__.SourceCodeLine = 400;
         ADD_START_HISTORY (  __context__ , "OFF") ; 
-        __context__.SourceCodeLine = 379;
+        __context__.SourceCodeLine = 401;
         Functions.Delay (  (int) ( 100 ) ) ; 
-        __context__.SourceCodeLine = 380;
+        __context__.SourceCodeLine = 402;
         DESELECT_ITEM__POUND__  .Value = (ushort) ( 3 ) ; 
         
         
@@ -519,7 +569,7 @@ object TIME_INC_PR_OnPush_3 ( Object __EventInfo__ )
     {
         SplusExecutionContext __context__ = SplusThreadStartCode(__SignalEventArg__);
         
-        __context__.SourceCodeLine = 383;
+        __context__.SourceCodeLine = 405;
         INC_TIME (  __context__ , (short)( 10 )) ; 
         
         
@@ -538,7 +588,7 @@ object TIME_DEC_PR_OnPush_4 ( Object __EventInfo__ )
     {
         SplusExecutionContext __context__ = SplusThreadStartCode(__SignalEventArg__);
         
-        __context__.SourceCodeLine = 387;
+        __context__.SourceCodeLine = 409;
         INC_TIME (  __context__ , (short)( Functions.ToSignedInteger( -( 10 ) ) )) ; 
         
         
@@ -555,27 +605,27 @@ public override object FunctionMain (  object __obj__ )
     {
         SplusExecutionContext __context__ = SplusFunctionMainStartCode();
         
-        __context__.SourceCodeLine = 393;
+        __context__.SourceCodeLine = 415;
         WaitForInitializationComplete ( ) ; 
-        __context__.SourceCodeLine = 394;
+        __context__.SourceCodeLine = 416;
         if ( Functions.TestForTrue  ( ( Functions.BoolToInt ( _SplusNVRAM.SAVE_SELECT > 0 ))  ) ) 
             { 
-            __context__.SourceCodeLine = 395;
+            __context__.SourceCodeLine = 417;
             SELECT_ITEM (  __context__ , (ushort)( _SplusNVRAM.SAVE_SELECT )) ; 
-            __context__.SourceCodeLine = 396;
+            __context__.SourceCodeLine = 418;
             switch ((int)_SplusNVRAM.SAVE_SELECT)
             
                 { 
                 case 1 : 
                 
                     { 
-                    __context__.SourceCodeLine = 398;
+                    __context__.SourceCodeLine = 420;
                     SINCE_TITLE__DOLLAR__  .UpdateValue ( "*SLEEPING SINCE"  ) ; 
-                    __context__.SourceCodeLine = 399;
+                    __context__.SourceCodeLine = 421;
                     MakeString ( SINCE_TIME__DOLLAR__ , "{0:d}:{1:d2}", (ushort)_SplusNVRAM.TE[ _SplusNVRAM.I_CURR ].H, (ushort)_SplusNVRAM.TE[ _SplusNVRAM.I_CURR ].M) ; 
-                    __context__.SourceCodeLine = 400;
+                    __context__.SourceCodeLine = 422;
                     DURATION_TITLE__DOLLAR__  .UpdateValue ( "*DURATION"  ) ; 
-                    __context__.SourceCodeLine = 401;
+                    __context__.SourceCodeLine = 423;
                     break ; 
                     } 
                 
@@ -583,13 +633,13 @@ public override object FunctionMain (  object __obj__ )
                 case 2 : 
                 
                     { 
-                    __context__.SourceCodeLine = 404;
+                    __context__.SourceCodeLine = 426;
                     SINCE_TITLE__DOLLAR__  .UpdateValue ( "*AWAKE SINCE"  ) ; 
-                    __context__.SourceCodeLine = 405;
+                    __context__.SourceCodeLine = 427;
                     MakeString ( SINCE_TIME__DOLLAR__ , "{0:d}:{1:d2}", (ushort)_SplusNVRAM.TE[ _SplusNVRAM.I_CURR ].H, (ushort)_SplusNVRAM.TE[ _SplusNVRAM.I_CURR ].M) ; 
-                    __context__.SourceCodeLine = 406;
+                    __context__.SourceCodeLine = 428;
                     DURATION_TITLE__DOLLAR__  .UpdateValue ( "*DURATION"  ) ; 
-                    __context__.SourceCodeLine = 407;
+                    __context__.SourceCodeLine = 429;
                     break ; 
                     } 
                 
@@ -599,14 +649,14 @@ public override object FunctionMain (  object __obj__ )
             
             } 
         
-        __context__.SourceCodeLine = 413;
+        __context__.SourceCodeLine = 435;
         while ( Functions.TestForTrue  ( ( 1)  ) ) 
             { 
-            __context__.SourceCodeLine = 414;
+            __context__.SourceCodeLine = 436;
             UPDATE_TIMES (  __context__  ) ; 
-            __context__.SourceCodeLine = 415;
+            __context__.SourceCodeLine = 437;
             Functions.Delay (  (int) ( 200 ) ) ; 
-            __context__.SourceCodeLine = 413;
+            __context__.SourceCodeLine = 435;
             } 
         
         
@@ -629,12 +679,12 @@ object ARG1_OnChange_5 ( Object __EventInfo__ )
         ushort R2 = 0;
         
         
-        __context__.SourceCodeLine = 422;
+        __context__.SourceCodeLine = 444;
         R1 = (short) ( Mod( ARG1  .ShortValue , ARG2  .ShortValue ) ) ; 
-        __context__.SourceCodeLine = 423;
+        __context__.SourceCodeLine = 445;
         R2 = (ushort) ( Mod( ARG1  .UshortValue , ARG2  .UshortValue ) ) ; 
-        __context__.SourceCodeLine = 424;
-        /* Trace( "({0:d}:{1:d}) %({2:d}:{3:d}) = ({4:d}:{5:d})({6:d}:{7:d})\r\n", (ushort)ARG1  .UshortValue, (short)ARG1  .UshortValue, (ushort)ARG2  .UshortValue, (short)ARG2  .UshortValue, (ushort)R1, (short)R1, (ushort)R2, (short)R2) */ ; 
+        __context__.SourceCodeLine = 446;
+        Trace( "({0:d}:{1:d}) %({2:d}:{3:d}) = ({4:d}:{5:d})({6:d}:{7:d})\r\n", (ushort)ARG1  .UshortValue, (short)ARG1  .UshortValue, (ushort)ARG2  .UshortValue, (short)ARG2  .UshortValue, (ushort)R1, (short)R1, (ushort)R2, (short)R2) ; 
         
         
     }
@@ -678,6 +728,9 @@ public override void LogosSplusInitialize()
     TIME_DEC_PR = new Crestron.Logos.SplusObjects.DigitalInput( TIME_DEC_PR__DigitalInput__, this );
     m_DigitalInputList.Add( TIME_DEC_PR__DigitalInput__, TIME_DEC_PR );
     
+    TOD_PM = new Crestron.Logos.SplusObjects.DigitalOutput( TOD_PM__DigitalOutput__, this );
+    m_DigitalOutputList.Add( TOD_PM__DigitalOutput__, TOD_PM );
+    
     ARG1 = new Crestron.Logos.SplusObjects.AnalogInput( ARG1__AnalogSerialInput__, this );
     m_AnalogInputList.Add( ARG1__AnalogSerialInput__, ARG1 );
     
@@ -689,9 +742,6 @@ public override void LogosSplusInitialize()
     
     DESELECT_ITEM__POUND__ = new Crestron.Logos.SplusObjects.AnalogOutput( DESELECT_ITEM__POUND____AnalogSerialOutput__, this );
     m_AnalogOutputList.Add( DESELECT_ITEM__POUND____AnalogSerialOutput__, DESELECT_ITEM__POUND__ );
-    
-    TOD__DOLLAR__ = new Crestron.Logos.SplusObjects.StringOutput( TOD__DOLLAR____AnalogSerialOutput__, this );
-    m_StringOutputList.Add( TOD__DOLLAR____AnalogSerialOutput__, TOD__DOLLAR__ );
     
     SINCE_TITLE__DOLLAR__ = new Crestron.Logos.SplusObjects.StringOutput( SINCE_TITLE__DOLLAR____AnalogSerialOutput__, this );
     m_StringOutputList.Add( SINCE_TITLE__DOLLAR____AnalogSerialOutput__, SINCE_TITLE__DOLLAR__ );
@@ -710,6 +760,12 @@ public override void LogosSplusInitialize()
     
     DATE__DOLLAR__ = new Crestron.Logos.SplusObjects.StringOutput( DATE__DOLLAR____AnalogSerialOutput__, this );
     m_StringOutputList.Add( DATE__DOLLAR____AnalogSerialOutput__, DATE__DOLLAR__ );
+    
+    TOD_12H__DOLLAR__ = new Crestron.Logos.SplusObjects.StringOutput( TOD_12H__DOLLAR____AnalogSerialOutput__, this );
+    m_StringOutputList.Add( TOD_12H__DOLLAR____AnalogSerialOutput__, TOD_12H__DOLLAR__ );
+    
+    TOD_24H__DOLLAR__ = new Crestron.Logos.SplusObjects.StringOutput( TOD_24H__DOLLAR____AnalogSerialOutput__, this );
+    m_StringOutputList.Add( TOD_24H__DOLLAR____AnalogSerialOutput__, TOD_24H__DOLLAR__ );
     
     HISTORY__DOLLAR__ = new InOutArray<StringOutput>( 10, this );
     for( uint i = 0; i < 10; i++ )
@@ -751,16 +807,18 @@ const uint TIME_INC_PR__DigitalInput__ = 3;
 const uint TIME_DEC_PR__DigitalInput__ = 4;
 const uint ARG1__AnalogSerialInput__ = 0;
 const uint ARG2__AnalogSerialInput__ = 1;
-const uint TOD__DOLLAR____AnalogSerialOutput__ = 0;
-const uint SINCE_TITLE__DOLLAR____AnalogSerialOutput__ = 1;
-const uint SINCE_TIME__DOLLAR____AnalogSerialOutput__ = 2;
-const uint DURATION_TITLE__DOLLAR____AnalogSerialOutput__ = 3;
-const uint DURATION_H__DOLLAR____AnalogSerialOutput__ = 4;
-const uint DURATION_UNIT__DOLLAR____AnalogSerialOutput__ = 5;
-const uint DATE__DOLLAR____AnalogSerialOutput__ = 6;
-const uint SELECT_ITEM__POUND____AnalogSerialOutput__ = 7;
-const uint DESELECT_ITEM__POUND____AnalogSerialOutput__ = 8;
-const uint HISTORY__DOLLAR____AnalogSerialOutput__ = 9;
+const uint TOD_PM__DigitalOutput__ = 0;
+const uint SINCE_TITLE__DOLLAR____AnalogSerialOutput__ = 0;
+const uint SINCE_TIME__DOLLAR____AnalogSerialOutput__ = 1;
+const uint DURATION_TITLE__DOLLAR____AnalogSerialOutput__ = 2;
+const uint DURATION_H__DOLLAR____AnalogSerialOutput__ = 3;
+const uint DURATION_UNIT__DOLLAR____AnalogSerialOutput__ = 4;
+const uint DATE__DOLLAR____AnalogSerialOutput__ = 5;
+const uint TOD_12H__DOLLAR____AnalogSerialOutput__ = 6;
+const uint TOD_24H__DOLLAR____AnalogSerialOutput__ = 7;
+const uint SELECT_ITEM__POUND____AnalogSerialOutput__ = 8;
+const uint DESELECT_ITEM__POUND____AnalogSerialOutput__ = 9;
+const uint HISTORY__DOLLAR____AnalogSerialOutput__ = 10;
 
 [SplusStructAttribute(-1, true, false)]
 public class SplusNVRAM : SplusStructureBase

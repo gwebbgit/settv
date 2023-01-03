@@ -35,7 +35,7 @@ Comments:
 #DEFAULT_VOLATILE
 #ENABLE_STACK_CHECKING
 
-//#ENABLE_TRACE
+#ENABLE_TRACE
 
 // #ENCODING_ASCII
 // #ENCODING_UTF16
@@ -68,14 +68,19 @@ ANALOG_INPUT
 	arg2
 	;
 
+DIGITAL_OUTPUT
+	tod_PM
+	;
+
 STRING_OUTPUT
-	tod$,
+	//obsolete: tod$,
 	since_title$,
 	since_time$,
 	duration_title$,
 	duration_h$,
 	duration_unit$,
-	date$
+	date$,
+	tod_12h$, tod_24h$
 	;
 ANALOG_OUTPUT
 	select_item#,
@@ -268,7 +273,24 @@ FUNCTION update_times() {
 	Trace ( "update_times()...\n\ti_curr=%u\n", i_curr );
 
 	/* Time of Day and Date */
-	MakeString ( tod$, "%u:%02u", Now.h, Now.m );
+	if ( Now.h = 0 ) {
+		/* Midnight hour */
+		MakeString ( tod_12h$, "%u:%02u<font size=\"60\">AM</font>", 12, Now.m );
+		tod_PM = 0;
+	} else if ( Now.h < 12 ) {
+		/* 1-11 AM */
+		MakeString ( tod_12h$, "%u:%02u<font size=\"60\">AM</font>", Now.h, Now.m );
+		tod_PM = 0;
+	} else if ( Now.h = 12 ) {
+		/* 12 noon hour */
+		MakeString ( tod_12h$, "%u:%02u<font size=\"60\">PM</font>", 12, Now.m );
+		tod_PM = 1;
+	} else if ( Now.h > 12 ) {
+		/* 1-11 PM */
+		MakeString ( tod_12h$, "%u:%02u<font size=\"60\">PM</font>", Now.h - 12, Now.m );
+		tod_PM = 1;
+	}
+	MakeString ( tod_24h$, "%u:%02u", Now.h, Now.m );
 	MakeString ( date$, "%s %s %u, %u", Left(Day(), 3), Left(Month(), 3), GetDateNum(), GetYearNum() );
 
 
