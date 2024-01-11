@@ -301,7 +301,7 @@ FUNCTION update_times() {
 	} else if ( Now.h > 12 ) {
 		/* 1-11 PM */
 		//MakeString ( tod_12h$, "%u:%02u<font size=\"80\">PM</font>", Now.h - 12, Now.m );
-		MakeString ( tod_12h$, "<font size=\"%lu\">%u:%02u</font><font size=\"%lu\">PM</font>", size1, Now.h, Now.m, size2 );
+		MakeString ( tod_12h$, "<font size=\"%lu\">%u:%02u</font><font size=\"%lu\">PM</font>", size1, Now.h-12, Now.m, size2 );
 		tod_PM = 1;
 	}
 	MakeString ( tod_24h$, "%u:%02u", Now.h, Now.m );

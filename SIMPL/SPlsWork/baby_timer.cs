@@ -335,7 +335,7 @@ namespace UserModule_BABY_TIMER
                         if ( Functions.TestForTrue  ( ( Functions.BoolToInt ( NOW.H > 12 ))  ) ) 
                             { 
                             __context__.SourceCodeLine = 304;
-                            MakeString ( TOD_12H__DOLLAR__ , "<font size=\"{0:d}\">{1:d}:{2:d2}</font><font size=\"{3:d}\">PM</font>", (uint)SIZE1, (ushort)NOW.H, (ushort)NOW.M, (uint)SIZE2) ; 
+                            MakeString ( TOD_12H__DOLLAR__ , "<font size=\"{0:d}\">{1:d}:{2:d2}</font><font size=\"{3:d}\">PM</font>", (uint)SIZE1, (ushort)(NOW.H - 12), (ushort)NOW.M, (uint)SIZE2) ; 
                             __context__.SourceCodeLine = 305;
                             TOD_PM  .Value = (ushort) ( 1 ) ; 
                             } 

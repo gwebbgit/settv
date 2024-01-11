@@ -1,0 +1,26 @@
+LICENSE OF CODE AND FILES
+
+DEFINITION
+This file and associated code files (collectively "FILES") on this system
+are licensed for use only on this system.  These FILES represent the
+intellectual property of GW SOUND LLC and/or their respective vendors.
+Re-use of these FILES on any other equipment or system is strictly
+prohibited.
+
+COPYING AND ARCHIVING
+These FILES may be copied exclusively for the purpose of safekeeping and
+restoration to the working system in case of equipment failure and
+replacement.  
+
+MODIFICATION OF FILES
+Modification of these FILES is permitted exclusively to support continued
+use of this same system and may not be used in any way to support other
+systems.  
+
+CONTACT
+For additional licensing and support of these FILES and this system, please
+contact the original system vendor, GW SOUND LLC, or George Webb.
+gw@gwsound.com +1-802-734-7124.
+
+[END OF LICENSE]
+
